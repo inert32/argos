@@ -14,10 +14,21 @@ public:
     
     bool get_next_triangle(triangle* ret);
     bool get_next_vector(vec3* ret);
+
+	bool have_triangles();
+	bool have_vectors();
 private:
     std::ifstream file;
     std::streampos triangles_start, vectors_start;
     std::streampos triangles_current, vectors_current;
+};
+
+class saver {
+public:
+	saver(const std::filesystem::path p);
+	void save_data(bool** mat);
+private:
+	std::ofstream file;
 };
 
 extern std::vector<triangle> triangles;
