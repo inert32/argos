@@ -29,6 +29,11 @@ public:
     float x = 0.0, y = 0.0, z = 0.0;
 };
 
+struct vec3 {
+	point from;
+	point to;
+};
+
 struct triangle {
     point A;
     point B;

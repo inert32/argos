@@ -7,26 +7,21 @@
 
 parser::parser() {
     file.open(verticies_file);
-    if (!file.good()) throw std::runtime_error("parser: Failed to open file " + filename.string());
+    if (!file.good()) throw std::runtime_error("parser: Failed to open file " + verticies_file.string());
 
     std::string header;
     std::getline(file, header);
 
-    try {
-        if (!(header[0] == 'V' && header[1] == ':')) 
-            throw std::runtime_error("parser: " + filename.string() + " corrupt.");
+    if (!(header[0] == 'V' && header[1] == ':')) 
+        throw std::runtime_error("parser: " + verticies_file.string() + " corrupt.");
 
-        triangles_start = triangles_current = file.tellg();
+    triangles_start = triangles_current = file.tellg();
 
-        std::streampos vec_pos = std::stoull(header.substr(2));
-        file.seekg(vec_pos);
-        if (file.eof()) throw std::runtime_error("parser: " + filename.string() + " corrupt.");
+    std::streampos vec_pos = std::stoull(header.substr(2));
+    file.seekg(vec_pos);
+    if (file.eof()) throw std::runtime_error("parser: " + verticies_file.string() + " corrupt.");
         
-        vectors_start = vectors_current = vec_pos;
-    }
-    catch (const std::exception&) {
-        throw;
-    }
+    vectors_start = vectors_current = vec_pos;
 }
 
 bool parser::get_next_triangle(triangle* ret) {
@@ -52,7 +47,7 @@ bool parser::get_next_triangle(triangle* ret) {
     return true;
 }
 
-bool parser::get_next_vector(point* ret) {
+bool parser::get_next_vector(vec3* ret) {
     file.seekg(vectors_current);
     
     std::string buf;
@@ -60,16 +55,19 @@ bool parser::get_next_vector(point* ret) {
 
     if (file.eof()) return false;
 
-    point from, to; float coord[6];
+    float coord[6];
     size_t space = 0, next_space = 0;
     for (int i = 0; i < 6; i++) {
         next_space = buf.find(' ', space);
         coord[i] = std::stod(buf.substr(space, next_space));
         space = next_space + 1;
     }
-    ret->x = coord[3] - coord[0];
-    ret->y = coord[4] - coord[1];
-    ret->z = coord[5] - coord[2];
+	ret->from.x = coord[0];
+	ret->from.y = coord[1];
+	ret->from.z = coord[2];
+	ret->to.x = coord[3];
+	ret->to.y = coord[4];
+	ret->to.z = coord[5];
 
     vectors_current = file.tellg();
     return true;
