@@ -19,4 +19,7 @@ extern unsigned int ipv4addr;
 // Ражим мастер-сервера. Не реализовано
 extern bool master_mode;
 
+// Количество треугольников для расчета
+extern unsigned int chunk_elements;
+
 #endif /* __COMMON_H__ */

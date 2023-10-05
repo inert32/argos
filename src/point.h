@@ -1,6 +1,8 @@
 #ifndef __POINT_H__
 #define __POINT_H__
 
+/* Определения точки и треугольника для вычислений */
+
 class point {
 public:
     point() = default;
