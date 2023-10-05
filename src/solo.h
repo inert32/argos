@@ -20,8 +20,8 @@ private:
     std::streampos triangles_current, vectors_current;
 };
 
-std::vector<triangle> triangles;
-std::vector<vec3> vectors;
+extern std::vector<triangle> triangles;
+extern std::vector<vec3> vectors;
 
 void solo_start();
 

@@ -3,6 +3,8 @@
 
 /* Определения точки и треугольника для вычислений */
 
+#include <ostream>
+
 class point {
 public:
     point() = default;
@@ -25,6 +27,11 @@ public:
     inline void operator=(point p) {
         x = p.x; y = p.y; z = p.z;
     }
+
+	friend std::ostream& operator<<(std::ostream& os, const point& p) {
+		os << "{ " << p.x << "; " << p.y << "; " << p.z << " }";
+		return os;
+	}
 
     float x = 0.0, y = 0.0, z = 0.0;
 };

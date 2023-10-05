@@ -11,6 +11,7 @@
 std::filesystem::path verticies_file;
 unsigned int ipv4addr = (unsigned)-1;
 bool master_mode = false;
+unsigned int chunk_elements = 100;
 
 void client_start() {}
 void master_start() {}

@@ -1,9 +1,13 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 
+#include <iostream> // for debug
 #include <fstream>
 #include "common.h"
 #include "solo.h"
+
+std::vector<triangle> triangles;
+std::vector<vec3> vectors;
 
 parser::parser() {
     file.open(verticies_file);
@@ -25,12 +29,13 @@ parser::parser() {
 }
 
 bool parser::get_next_triangle(triangle* ret) {
+	file.clear();
     file.seekg(triangles_current);
     
     std::string buf;
     std::getline(file, buf);
 
-    if (file.tellg() >= vectors_start) return false;
+    if (file.tellg() >= vectors_start || buf.empty()) return false;
 
     float coord[9];
     size_t space = 0, next_space = 0;
@@ -48,12 +53,13 @@ bool parser::get_next_triangle(triangle* ret) {
 }
 
 bool parser::get_next_vector(vec3* ret) {
+	file.clear();
     file.seekg(vectors_current);
     
     std::string buf;
     std::getline(file, buf);
 
-    if (file.eof()) return false;
+    if (file.eof() || buf.empty()) return false;
 
     float coord[6];
     size_t space = 0, next_space = 0;
@@ -76,8 +82,18 @@ bool parser::get_next_vector(vec3* ret) {
 void solo_start() {
     try {
         parser p;
+		// Загружаем данные
+		unsigned int count = 0;
+		triangle load2;
+		while (count < chunk_elements && p.get_next_triangle(&load2)) {
+			triangles.push_back(load2);
+			count++;
+		}
+		vec3 load;
+		while (p.get_next_vector(&load)) vectors.push_back(load);
     }
     catch (std::runtime_error& e) {
-
+		std::cerr << "err: " << e.what();
+		return;
     }
 }
