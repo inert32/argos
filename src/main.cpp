@@ -23,6 +23,7 @@ int show_help() {
     std::cout << "(N/A)  --connect <ADDR>    - connect to master server (IPv4 only)" << std::endl;
     std::cout << "(N/A)  --master            - be master node" << std::endl;
     std::cout << "       --output <PATH>     - path to the output file" << std::endl;
+    std::cout << "       --chunk <COUNT>     - count of triangles to load per cycle" << std::endl;
     return 0;
 }
 
@@ -45,7 +46,17 @@ bool parse_cli(int argc, char** argv) {
             if (i + 1 < argc)
                 output_file = argv[i + 1];
             else
-                std::cerr << "warn: parse_cli: no output file provided, using default." << std::endl;
+                std::cerr << "warn: parse_cli: no output file provided, using default: " << output_file << std::endl;
+            i++;
+        }
+
+        if (buf == "--chunk") {
+            try {
+                chunk_elements = std::stoi(argv[i + 1]);
+            }
+            catch (const std::exception&) {
+                std::cerr << "warn: parse_cli: no chunk count provided, using default: " << chunk_elements << std::endl;
+            }
             i++;
         }
     }
@@ -56,6 +67,10 @@ bool parse_cli(int argc, char** argv) {
 int main(int argc, char** argv) {
     std::cout << "argos " << ARGOS_VERSION << std::endl;
     if (!parse_cli(argc, argv)) return show_help();
+
+    // Очищаем пути к файлам
+    verticies_file = std::filesystem::absolute(verticies_file);
+    output_file = std::filesystem::absolute(output_file);
 
     // Определяем режим работы
     if (ipv4addr == (unsigned)-1 && verticies_file.empty()) {

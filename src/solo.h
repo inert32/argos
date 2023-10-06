@@ -6,8 +6,10 @@
 
 #include <fstream>
 #include <vector>
+#include <map>
 #include "point.h"
 
+// Чтение файла вершин для работы с ними
 class parser {
 public:
     parser();
@@ -23,10 +25,11 @@ private:
     std::streampos triangles_current, vectors_current;
 };
 
+// Сохранение результатов
 class saver {
 public:
 	saver();
-	void save_data(bool** mat);
+	void save_data(bool** mat, const unsigned int count);
 private:
 	std::ofstream file;
 };
@@ -34,7 +37,13 @@ private:
 extern std::vector<triangle> triangles;
 extern std::vector<vec3> vectors;
 
+// Начало работы в одиночном режиме
 void solo_start();
+
+// Вычисление столкновений
 bool calc_collision(const triangle& t, const vec3 v);
+
+// Сжатие выходного файла
+void compress_output();
 
 #endif /* __SOLO_H__ */
