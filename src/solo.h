@@ -6,7 +6,6 @@
 
 #include <fstream>
 #include <vector>
-#include <map>
 #include "point.h"
 
 // Чтение файла вершин для работы с ними
@@ -14,7 +13,9 @@ class parser {
 public:
     parser();
     
+    // Получение треугольника из файла
     bool get_next_triangle(triangle* ret);
+    // Получение вектора из файла
     bool get_next_vector(vec3* ret);
 
 	bool have_triangles();

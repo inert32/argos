@@ -41,11 +41,13 @@ public:
         };
     }
 
+    // Человекочитаемый вывод
 	friend std::ostream& operator<<(std::ostream& os, const point& p) {
 		os << "{ " << p.x << "; " << p.y << "; " << p.z << " }";
 		return os;
 	}
-    void print_terse(std::ostream& os) {
+    // Машинный вывод
+    void print_terse(std::ostream& os) const {
 		os << x << " " << y << " " << z;
 	}
 
