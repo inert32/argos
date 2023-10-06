@@ -8,9 +8,10 @@
 
 std::vector<triangle> triangles;
 std::vector<vec3> vectors;
+constexpr float EPS = 1e-6;
 
 parser::parser() {
-    file.open(verticies_file);
+    file.open(std::filesystem::absolute(verticies_file));
     if (!file.good()) throw std::runtime_error("parser: Failed to open file " + verticies_file.string());
 
     std::string header;
@@ -87,6 +88,31 @@ bool parser::have_vectors() {
 	return file.eof();
 }
 
+saver::saver() {
+    file.open(std::filesystem::absolute(output_file));
+    if (!file.good()) throw std::runtime_error("saver: Failed to open file " + verticies_file.string());
+}
+
+void saver::save_data(bool** mat) {
+    const size_t vec_count = vectors.size();
+    // Для каждого вектора указываем 
+    for (size_t vec = 0; vec < vec_count; vec++) {
+        auto curr_vec = vectors[vec];
+        curr_vec.from.print_terse(file); file << ">";
+        curr_vec.to.print_terse(file); file << ":";
+
+        for (size_t tr = 0; tr < chunk_elements; tr++)
+            if (mat[vec][tr] == true) {
+                auto t = triangles[tr];
+                t.A.print_terse(file); file << " ";
+                t.B.print_terse(file); file << " ";
+                t.C.print_terse(file); file << " ";
+            }
+        file << std::endl;
+    }
+    file.flush();
+}
+
 void solo_start() {
     try {
         parser p;
@@ -98,7 +124,7 @@ void solo_start() {
 		// Создаем матрицу ответов
 		const size_t vec_count = vectors.size();
 		bool** ans_matr = new bool*[vec_count];
-		for (size_t i = 0; i < vec_count; i++) {
+		for (size_t i = 0; i < vec_count + 1; i++) {
 			ans_matr[i] = new bool[chunk_elements];
 			for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = false;
 		}
@@ -120,14 +146,38 @@ void solo_start() {
 		for (size_t vec = 0; vec < vec_count; vec++)
 			for (size_t tr = 0; tr < chunk_elements; tr++)
 				ans_matr[vec][tr] = calc_collision(triangles[tr], vectors[vec]);
-
+        // Сохраняем
+        saver s;
+        s.save_data(ans_matr);
     }
-    catch (std::runtime_error& e) {
-		std::cerr << "err: " << e.what();
+    catch (const std::runtime_error& e) {
+		std::cerr << "err: " << e.what() << std::endl;
 		return;
     }
 }
 
 bool calc_collision(const triangle& t, const vec3 v) {
-	return true;
+	// Представляем треугольник как лучи от одной точки
+	const point dir(v.from, v.to);
+	point e1(t.A, t.B), e2(t.A, t.C);
+
+	// Вычисление вектора нормали к плоскости
+	point pvec = dir | e2;
+	float det = e1 * pvec;
+
+	// Луч параллелен плоскости
+	if (det < EPS && det > -EPS) return false;
+
+	float inv_det = 1 / det;
+	point tvec(t.A, v.from);
+
+	float coord_u = tvec * pvec * inv_det;
+	if (coord_u < 0.0 || coord_u > 1.0) return false;
+
+	point qvec = tvec | e1;
+	float coord_v = dir * qvec * inv_det;
+	if (coord_v < 0 || coord_u + coord_v > 1) return false;
+
+	float coord_t = e2 * qvec * inv_det;
+	return (coord_t > EPS) ? true : false;
 }

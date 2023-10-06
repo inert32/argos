@@ -11,6 +11,8 @@ constexpr char ARGOS_VERSION[] = "v@PROJECT_VERSION@";
 
 // Путь до исходного файла заданий
 extern std::filesystem::path verticies_file;
+// Путь до выходного файла
+extern std::filesystem::path output_file;
 
 // Адрес мастер-сервера. Не реализовано, do not use.
 // Используем int пока не появится сетевая подсистема

@@ -9,6 +9,7 @@
 #include "solo.h"
 
 std::filesystem::path verticies_file;
+std::filesystem::path output_file = "output.list";
 unsigned int ipv4addr = (unsigned)-1;
 bool master_mode = false;
 unsigned int chunk_elements = 100;
@@ -21,6 +22,7 @@ int show_help() {
     std::cout << "       --file <PATH>       - use verticies file" << std::endl;
     std::cout << "(N/A)  --connect <ADDR>    - connect to master server (IPv4 only)" << std::endl;
     std::cout << "(N/A)  --master            - be master node" << std::endl;
+    std::cout << "       --output <PATH>     - path to the output file" << std::endl;
     return 0;
 }
 
@@ -29,10 +31,22 @@ bool parse_cli(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         std::string buf(argv[i]);
 
-        if (buf == "--file" && i + 1 < argc) verticies_file = argv[++i];
-        else {
-            std::cerr << "err: parse_cli: no verticies file provided." << std::endl;
-            return false;
+        if (buf == "--file") {
+            if (i + 1 < argc)
+                verticies_file = argv[i + 1];
+            else {
+                std::cerr << "err: parse_cli: no verticies file provided." << std::endl;
+                return false;
+            }
+            i++;
+        }
+
+        if (buf == "--output") {
+            if (i + 1 < argc)
+                output_file = argv[i + 1];
+            else
+                std::cerr << "warn: parse_cli: no output file provided, using default." << std::endl;
+            i++;
         }
     }
     

@@ -25,7 +25,7 @@ private:
 
 class saver {
 public:
-	saver(const std::filesystem::path p);
+	saver();
 	void save_data(bool** mat);
 private:
 	std::ofstream file;
@@ -35,5 +35,6 @@ extern std::vector<triangle> triangles;
 extern std::vector<vec3> vectors;
 
 void solo_start();
+bool calc_collision(const triangle& t, const vec3 v);
 
 #endif /* __SOLO_H__ */

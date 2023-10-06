@@ -4,7 +4,7 @@ if(MSVC_VERSION LESS 1910)
 	message(FATAL_ERROR "This project require C++17")
 endif()
 
-project(argos_proj VERSION "0.0.2")
+project(argos_proj VERSION "0.0.3")
 configure_file(src/common.h.in ${argos_proj_SOURCE_DIR}/src/common.h)
 
 add_executable(argos

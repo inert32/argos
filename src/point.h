@@ -14,23 +14,39 @@ public:
     point(const point& old) {
         x = old.x, y = old.y, z = old.z;
     }
+    // Вычисление координат вектора
     point(const point& from, const point& to) {
         x = to.x - from.x, y = to.y - from.y, z = to.z - from.z;
     }
 
-    inline point operator+(point p) const {
+    inline point operator+(const point &p) const {
         return { x + p.x, y + p.y, z + p.z };
     }
-    inline point operator-(point p) const {
+    inline point operator-(const point& p) const {
         return { x - p.x, y - p.y, z - p.z };
     }
-    inline void operator=(point p) {
+    inline void operator=(const point& p) {
         x = p.x; y = p.y; z = p.z;
+    }
+    // Скалярное произведение
+    inline float operator*(const point& v) const {
+        return x * v.x + y * v.y + z * v.z;
+    }
+    // Векторное произведение
+    inline point operator|(const point& v) const {
+        return { 
+            y * v.z - z * v.y,
+            z * v.x - x * v.z,
+		    x * v.y - y * v.x 
+        };
     }
 
 	friend std::ostream& operator<<(std::ostream& os, const point& p) {
 		os << "{ " << p.x << "; " << p.y << "; " << p.z << " }";
 		return os;
+	}
+    void print_terse(std::ostream& os) {
+		os << x << " " << y << " " << z;
 	}
 
     float x = 0.0, y = 0.0, z = 0.0;
