@@ -24,4 +24,7 @@ extern bool master_mode;
 // Количество треугольников для расчета
 extern unsigned int chunk_elements;
 
+// Количество потоков для расчета
+extern unsigned int threads_count;
+
 #endif /* __COMMON_H__ */

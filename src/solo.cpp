@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <thread>
 #include "common.h"
 #include "solo.h"
 
