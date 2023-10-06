@@ -26,7 +26,7 @@ private:
 class saver {
 public:
 	saver();
-	void save_data(bool** mat);
+	void save_data(bool** mat, const unsigned int count);
 private:
 	std::ofstream file;
 };

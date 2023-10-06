@@ -27,6 +27,8 @@ parser::parser() {
     if (file.eof()) throw std::runtime_error("parser: " + verticies_file.string() + " corrupt.");
         
     vectors_start = vectors_current = vec_pos;
+
+    std::cout << "debug: parser: vec_start = " << vec_pos << ", tri_start: " << triangles_start << std::endl;
 }
 
 bool parser::get_next_triangle(triangle* ret) {
@@ -81,7 +83,7 @@ bool parser::get_next_vector(vec3* ret) {
 }
 
 bool parser::have_triangles() {
-	return file.tellg() >= vectors_start;
+	return triangles_current < vectors_start;
 }
 
 bool parser::have_vectors() {
@@ -89,11 +91,11 @@ bool parser::have_vectors() {
 }
 
 saver::saver() {
-    file.open(std::filesystem::absolute(output_file));
+    file.open(std::filesystem::absolute(output_file), std::ios::app | std::ios::ate);
     if (!file.good()) throw std::runtime_error("saver: Failed to open file " + verticies_file.string());
 }
 
-void saver::save_data(bool** mat) {
+void saver::save_data(bool** mat, const unsigned int count) {
     const size_t vec_count = vectors.size();
     // Для каждого вектора указываем 
     for (size_t vec = 0; vec < vec_count; vec++) {
@@ -101,7 +103,7 @@ void saver::save_data(bool** mat) {
         curr_vec.from.print_terse(file); file << ">";
         curr_vec.to.print_terse(file); file << ":";
 
-        for (size_t tr = 0; tr < chunk_elements; tr++)
+        for (size_t tr = 0; tr < count; tr++)
             if (mat[vec][tr] == true) {
                 auto t = triangles[tr];
                 t.A.print_terse(file); file << " ";
@@ -116,20 +118,8 @@ void saver::save_data(bool** mat) {
 void solo_start() {
     try {
         parser p;
+        saver s;
 
-		unsigned int count = 0;
-		vec3 load;
-		while (p.get_next_vector(&load)) vectors.push_back(load);
-
-		// Создаем матрицу ответов
-		const size_t vec_count = vectors.size();
-		bool** ans_matr = new bool*[vec_count];
-		for (size_t i = 0; i < vec_count + 1; i++) {
-			ans_matr[i] = new bool[chunk_elements];
-			for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = false;
-		}
-
-		// Загружаем данные
 		/* while (p.have_triangles()) {
 		   load triangles
 		   do calc
@@ -137,18 +127,40 @@ void solo_start() {
 		   clear triangles, count = 0
 		   }
 		*/
-		triangle load2;
-		while (count < chunk_elements && p.get_next_triangle(&load2)) {
-			triangles.push_back(load2);
-			count++;
-		}
-		// Вычисляем столкновения
-		for (size_t vec = 0; vec < vec_count; vec++)
-			for (size_t tr = 0; tr < chunk_elements; tr++)
-				ans_matr[vec][tr] = calc_collision(triangles[tr], vectors[vec]);
-        // Сохраняем
-        saver s;
-        s.save_data(ans_matr);
+        // Загружаем данные
+		vec3 load;
+		while (p.get_next_vector(&load)) vectors.push_back(load);
+
+        unsigned int chunks_count = 0;
+        while (p.have_triangles()) {
+            triangle load2; unsigned int count = 0;
+	    	while (count < chunk_elements && p.get_next_triangle(&load2)) {
+		    	triangles.push_back(load2);
+			    count++;
+		    }
+            if (count == 0) break;
+
+    		// Создаем матрицу ответов
+	    	const size_t vec_count = vectors.size();
+		    bool** ans_matr = new bool*[vec_count];
+    		for (size_t i = 0; i < vec_count + 1; i++) {
+	    		ans_matr[i] = new bool[count];
+		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = false;
+    		}
+
+            std::cout << "Calculating triangles: " << 1 + chunks_count
+            << " of " << chunks_count + count << std::endl;
+
+	    	// Вычисляем столкновения
+		    for (size_t vec = 0; vec < vec_count; vec++)
+			    for (size_t tr = 0; tr < chunk_elements; tr++)
+				    ans_matr[vec][tr] = calc_collision(triangles[tr], vectors[vec]);
+            // Сохраняем
+            s.save_data(ans_matr, count);
+            // Очищаем данные для следующей партии треугольников
+            triangles.clear();
+            chunks_count+=count;
+        }
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;
