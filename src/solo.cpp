@@ -1,8 +1,9 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 
-#include <iostream> // for debug
-#include <fstream>
+#include <iostream>
+#include <vector>
+#include <map>
 #include "common.h"
 #include "solo.h"
 
@@ -208,19 +209,13 @@ void compress_output() {
         const std::string vec = buf.substr(0, split);
         const std::string list = buf.substr(split + 1);
 
-        if (data.find(vec) == data.end()) // Вектор не найден
+        if (data.find(vec) == data.end()) // Если вектор не найден
             data[vec] = list; // Создаем пару вектор-треугольники
         else
             data[vec] = data[vec] + list + ' '; // Добавляем новые треугольники к старым
     }
 
     for (auto &i : data) out << i.first << ':' << i.second << std::endl;
-    out.flush();
-
-    const auto size_before = std::filesystem::file_size(base_path);
-    const auto size_after = std::filesystem::file_size(output_file);
-    std::cout << "before: " << size_before << ", after: " << size_after 
-        << "(" << (float)size_after / size_before * 100.0f << "%)" << std::endl;
     
     base.close();
     out.close();
