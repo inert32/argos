@@ -95,7 +95,7 @@ void solo_start() {
 		vec3 load;
 		while (p.get_next_vector(&load)) vectors.push_back(load);
 
-		// Создаем матрицу ответов
+		// РЎРѕР·РґР°РµРј РјР°С‚СЂРёС†Сѓ РѕС‚РІРµС‚РѕРІ
 		const size_t vec_count = vectors.size();
 		bool** ans_matr = new bool*[vec_count];
 		for (size_t i = 0; i < vec_count; i++) {
@@ -103,7 +103,7 @@ void solo_start() {
 			for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = false;
 		}
 
-		// Загружаем данные
+		// Р—Р°РіСЂСѓР¶Р°РµРј РґР°РЅРЅС‹Рµ
 		/* while (p.have_triangles()) {
 		   load triangles
 		   do calc
@@ -116,7 +116,7 @@ void solo_start() {
 			triangles.push_back(load2);
 			count++;
 		}
-		// Вычисляем столкновения
+		// Р’С‹С‡РёСЃР»СЏРµРј СЃС‚РѕР»РєРЅРѕРІРµРЅРёСЏ
 		for (size_t vec = 0; vec < vec_count; vec++)
 			for (size_t tr = 0; tr < chunk_elements; tr++)
 				ans_matr[vec][tr] = calc_collision(triangles[tr], vectors[vec]);
