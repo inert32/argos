@@ -68,6 +68,10 @@ int main(int argc, char** argv) {
     std::cout << "argos " << ARGOS_VERSION << std::endl;
     if (!parse_cli(argc, argv)) return show_help();
 
+    // Очищаем пути к файлам
+    verticies_file = std::filesystem::absolute(verticies_file);
+    output_file = std::filesystem::absolute(output_file);
+
     // Определяем режим работы
     if (ipv4addr == (unsigned)-1 && verticies_file.empty()) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
