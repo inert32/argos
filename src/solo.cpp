@@ -11,6 +11,8 @@
 std::vector<triangle> triangles;
 std::vector<vec3> vectors;
 constexpr float EPS = 1e-6;
+bool stop = false;
+bool tasks_ready = false;
 
 parser::parser() {
     file.open(verticies_file);
@@ -95,7 +97,7 @@ saver::saver() {
     if (!file.good()) throw std::runtime_error("saver: Failed to open file " + output_file.string() + ".tmp");
 }
 
-void saver::save_data(bool** mat, const unsigned int count) {
+void saver::save_data(volatile bool** mat, const unsigned int count) {
     const size_t vec_count = vectors.size();
     // Для каждого вектора указываем 
     for (size_t vec = 0; vec < vec_count; vec++) {
@@ -115,6 +117,41 @@ void saver::save_data(bool** mat, const unsigned int count) {
     file.flush();
 }
 
+void tasks_queue::add_task(thread_task t) {
+    std::lock_guard<std::mutex> lock(m);
+    queue.push(t);
+}
+std::optional<thread_task> tasks_queue::take_task() {
+    // Ждем нашей очереди
+    std::lock_guard<std::mutex> lock(m);
+    if (queue.empty()) return {};
+
+    // Передаем задание, если есть
+    thread_task ret = queue.front();
+    queue.pop();
+
+    return ret;
+}
+
+bool tasks_queue::wait_for_empty() {
+    std::lock_guard<std::mutex> lock(m);
+    return queue.size() > 0;
+}
+
+void worker_main(tasks_queue* src) {
+    while (!stop) {
+        auto task = src->take_task();
+        if (task) {
+            auto ans = task->ans;
+            const auto vec_c = task->vec;
+            const auto count = triangles.size();
+            for (size_t i = 0; i < count; i++)
+                ans[i] = calc_collision(triangles[i], vec_c);
+        }
+        else std::this_thread::yield();
+    }
+}
+
 void solo_start() {
     try {
         parser p;
@@ -124,38 +161,53 @@ void solo_start() {
 		vec3 load;
 		while (p.get_next_vector(&load)) vectors.push_back(load);
 
-        unsigned int chunks_count = 0;
+        // Создаем матрицу ответов
+        const size_t vec_count = vectors.size();
+		volatile bool** ans_matr = new volatile bool*[vec_count];
+        for (size_t i = 0; i < vec_count; i++) ans_matr[i] = nullptr;
+
+        // Создаем потоки и очередь заданий
+        tasks_queue tasks;
+        std::vector<std::thread> workers;
+        for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, &tasks);
+
+        size_t chunks_count = 0;
         while (p.have_triangles()) {
-            triangle load2; unsigned int count = 0;
+            // Загружаем треугольники
+            triangle load2; size_t count = 0;
 	    	while (count < chunk_elements && p.get_next_triangle(&load2)) {
 		    	triangles.push_back(load2);
 			    count++;
 		    }
             if (count == 0) break;
 
-    		// Создаем матрицу ответов
-	    	const size_t vec_count = vectors.size();
-		    bool** ans_matr = new bool*[vec_count];
-    		for (size_t i = 0; i < vec_count + 1; i++) {
-	    		ans_matr[i] = new bool[count];
+            for (size_t i = 0; i < vec_count; i++) {
+	    		ans_matr[i] = new volatile bool[count];
 		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = false;
     		}
 
             std::cout << "Calculating triangles: " << 1 + chunks_count
             << " of " << chunks_count + count << std::endl;
-
-	    	// Вычисляем столкновения
-		    for (size_t vec = 0; vec < vec_count; vec++)
-			    for (size_t tr = 0; tr < chunk_elements; tr++)
-				    ans_matr[vec][tr] = calc_collision(triangles[tr], vectors[vec]);
+            
+            for (size_t i = 0; i < vec_count; i++) {
+                thread_task tmp = {vectors[i], ans_matr[i]};
+                tasks.add_task(tmp);
+            }
+            // Ждем завершения вычислений
+            while (tasks.wait_for_empty()) std::this_thread::yield();
+    		
             // Сохраняем
             s.save_data(ans_matr, count);
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
+            for (size_t i = 0; i < vec_count; i++) delete[] ans_matr[i];
             chunks_count+=count;
         }
+        // Останавливаем потоки
+        stop = true;
+        for (size_t i = 0; i < threads_count; i++) workers[i].join();
         // При количестве треугольников больше чем chunks_elements
-        // вектора в выходном файле будут повторяться. 
+        // вектора в выходном файле будут повторяться. Исправляем.
         compress_output();
     }
     catch (const std::runtime_error& e) {

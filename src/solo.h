@@ -4,8 +4,13 @@
 /* Необходимые определения для одиночного режима */
 /* Парсер входного файла заданий, вычисления, запись результатов */
 
+// Файлы solo будет разделены на solo.{h,cpp} и base.{h,cpp}
+
 #include <fstream>
 #include <vector>
+#include <queue>
+#include <mutex>
+#include <optional>
 #include "point.h"
 
 // Чтение файла вершин для работы с ними
@@ -30,13 +35,29 @@ private:
 class saver {
 public:
 	saver();
-	void save_data(bool** mat, const unsigned int count);
+	void save_data(volatile bool** mat, const unsigned int count);
 private:
 	std::ofstream file;
 };
 
 extern std::vector<triangle> triangles;
 extern std::vector<vec3> vectors;
+
+struct thread_task {
+    vec3 vec; // Вектор для обработки
+    volatile bool* ans = nullptr; // Строка в матрице ответов
+};
+
+class tasks_queue {
+public:
+    void add_task(thread_task t);
+    std::optional<thread_task> take_task();
+    bool wait_for_empty();
+
+private:
+    std::queue<thread_task> queue;
+    mutable std::mutex m;
+};
 
 // Начало работы в одиночном режиме
 void solo_start();
