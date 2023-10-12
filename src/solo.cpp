@@ -122,7 +122,7 @@ void worker_main(th_queue<thread_task>* src) {
         if (task) {
             auto ans = task->ans;
             if (ans == nullptr) {
-                std::cerr << "err: worker_main: found nullptr!" << std::endl;
+                std::cerr << "err: worker_main: task invalid, found nullptr!" << std::endl;
                 continue;
             }
             const auto vec_c = task->vec;
@@ -169,7 +169,7 @@ void solo_start() {
     		}
 
             std::cout << "Calculating triangles: " << 1 + chunks_count
-            << " of " << chunks_count + count << std::endl;
+                        << " of " << chunks_count + count << std::endl;
             
             for (size_t i = 0; i < vec_count; i++) {
                 thread_task tmp = {vectors[i], ans_matr[i]};

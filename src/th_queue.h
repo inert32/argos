@@ -6,7 +6,6 @@
 #include <queue>
 #include <mutex>
 #include <optional>
-#include <memory>
 
 template<class T>
 class th_queue {
@@ -23,12 +22,17 @@ public:
         storage.push(value);
     }
 
-    std::shared_ptr<T> take() {
+    std::optional<T> take() {
         std::lock_guard<std::mutex> lock(m);
-        if (storage.empty()) return nullptr;
-        const std::shared_ptr<T> res(std::make_shared<T>(storage.front()));
+        if (storage.empty()) return {};
+        auto ret = storage.front();
         storage.pop();
-        return res;
+        return ret;
+    }
+
+    size_t count() const {
+        std::lock_guard<std::mutex> lock(m);
+        return storage.size();
     }
 
     bool empty() const {
