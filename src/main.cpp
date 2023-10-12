@@ -68,6 +68,7 @@ bool parse_cli(int argc, char** argv) {
             if (threads_count > std::thread::hardware_concurrency())
                 std::cerr << "warn: parse_cli: requested threads count exceed native (" 
                 << std::thread::hardware_concurrency() << ")" << std::endl;
+            if (threads_count == 0) threads_count = 1;
             i++;
         }
     }

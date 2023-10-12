@@ -11,8 +11,7 @@
 std::vector<triangle> triangles;
 std::vector<vec3> vectors;
 constexpr float EPS = 1e-6;
-bool stop = false;
-bool tasks_ready = false;
+volatile bool stop = false;
 
 parser::parser() {
     file.open(verticies_file);
@@ -117,32 +116,15 @@ void saver::save_data(volatile bool** mat, const unsigned int count) {
     file.flush();
 }
 
-void tasks_queue::add_task(thread_task t) {
-    std::lock_guard<std::mutex> lock(m);
-    queue.push(t);
-}
-std::optional<thread_task> tasks_queue::take_task() {
-    // Ждем нашей очереди
-    std::lock_guard<std::mutex> lock(m);
-    if (queue.empty()) return {};
-
-    // Передаем задание, если есть
-    thread_task ret = queue.front();
-    queue.pop();
-
-    return ret;
-}
-
-bool tasks_queue::wait_for_empty() {
-    std::lock_guard<std::mutex> lock(m);
-    return queue.size() > 0;
-}
-
-void worker_main(tasks_queue* src) {
+void worker_main(th_queue<thread_task>* src) {
     while (!stop) {
-        auto task = src->take_task();
+        auto task = src->take();
         if (task) {
             auto ans = task->ans;
+            if (ans == nullptr) {
+                std::cerr << "err: worker_main: found nullptr!" << std::endl;
+                continue;
+            }
             const auto vec_c = task->vec;
             const auto count = triangles.size();
             for (size_t i = 0; i < count; i++)
@@ -167,7 +149,7 @@ void solo_start() {
         for (size_t i = 0; i < vec_count; i++) ans_matr[i] = nullptr;
 
         // Создаем потоки и очередь заданий
-        tasks_queue tasks;
+        th_queue<thread_task> tasks;
         std::vector<std::thread> workers;
         for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, &tasks);
 
@@ -191,16 +173,20 @@ void solo_start() {
             
             for (size_t i = 0; i < vec_count; i++) {
                 thread_task tmp = {vectors[i], ans_matr[i]};
-                tasks.add_task(tmp);
+                tasks.add(tmp);
             }
             // Ждем завершения вычислений
-            while (tasks.wait_for_empty()) std::this_thread::yield();
+            while (!tasks.empty()) std::this_thread::yield();
     		
             // Сохраняем
             s.save_data(ans_matr, count);
+
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
-            for (size_t i = 0; i < vec_count; i++) delete[] ans_matr[i];
+            for (size_t i = 0; i < vec_count; i++) {
+                delete[] ans_matr[i];
+                ans_matr[i] = nullptr;
+            }
             chunks_count+=count;
         }
         // Останавливаем потоки

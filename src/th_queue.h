@@ -1,0 +1,43 @@
+#ifndef __TH_QUEUE_H__
+#define __TH_QUEUE_H__
+
+/* Потокобезопасная очередь */
+
+#include <queue>
+#include <mutex>
+#include <optional>
+#include <memory>
+
+template<class T>
+class th_queue {
+public:
+    th_queue() {}
+    th_queue(const th_queue& other) {
+        std::lock_guard<std::mutex> lock(other.m);
+        storage = other.storage;
+    }
+    th_queue& operator=(const th_queue&) = delete;
+
+    void add(T value) {
+        std::lock_guard<std::mutex> lock(m);
+        storage.push(value);
+    }
+
+    std::shared_ptr<T> take() {
+        std::lock_guard<std::mutex> lock(m);
+        if (storage.empty()) return nullptr;
+        const std::shared_ptr<T> res(std::make_shared<T>(storage.front()));
+        storage.pop();
+        return res;
+    }
+
+    bool empty() const {
+        std::lock_guard<std::mutex> lock(m);
+        return storage.empty();
+    }
+private:
+    std::queue<T> storage;
+    mutable std::mutex m;
+};
+
+#endif /* __TH_QUEUE_H__ */
