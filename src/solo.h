@@ -4,9 +4,12 @@
 /* Необходимые определения для одиночного режима */
 /* Парсер входного файла заданий, вычисления, запись результатов */
 
+// Файлы solo будет разделены на solo.{h,cpp} и base.{h,cpp}
+
 #include <fstream>
 #include <vector>
 #include "point.h"
+#include "th_queue.h"
 
 // Чтение файла вершин для работы с ними
 class parser {
@@ -18,8 +21,8 @@ public:
     // Получение вектора из файла
     bool get_next_vector(vec3* ret);
 
-	bool have_triangles();
-	bool have_vectors();
+	bool have_triangles() const;
+	bool have_vectors() const;
 private:
     std::ifstream file;
     std::streampos triangles_start, vectors_start;
@@ -30,7 +33,7 @@ private:
 class saver {
 public:
 	saver();
-	void save_data(bool** mat, const unsigned int count);
+	void save_data(volatile char** mat, const unsigned int count);
 private:
 	std::ofstream file;
 };
@@ -38,11 +41,16 @@ private:
 extern std::vector<triangle> triangles;
 extern std::vector<vec3> vectors;
 
+struct thread_task {
+    vec3 vec; // Вектор для обработки
+    volatile char* ans = nullptr; // Строка в матрице ответов
+};
+
 // Начало работы в одиночном режиме
 void solo_start();
 
 // Вычисление столкновений
-bool calc_collision(const triangle& t, const vec3 v);
+char calc_collision(const triangle& t, const vec3 v);
 
 // Сжатие выходного файла
 void compress_output();
