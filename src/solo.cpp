@@ -83,11 +83,11 @@ bool parser::get_next_vector(vec3* ret) {
     return true;
 }
 
-bool parser::have_triangles() {
+bool parser::have_triangles() const {
 	return triangles_current < vectors_start;
 }
 
-bool parser::have_vectors() {
+bool parser::have_vectors() const {
 	return file.eof();
 }
 
@@ -96,7 +96,7 @@ saver::saver() {
     if (!file.good()) throw std::runtime_error("saver: Failed to open file " + output_file.string() + ".tmp");
 }
 
-void saver::save_data(volatile bool** mat, const unsigned int count) {
+void saver::save_data(volatile char** mat, const unsigned int count) {
     const size_t vec_count = vectors.size();
     // Для каждого вектора указываем 
     for (size_t vec = 0; vec < vec_count; vec++) {
@@ -105,7 +105,7 @@ void saver::save_data(volatile bool** mat, const unsigned int count) {
         curr_vec.to.print_terse(file); file << ":";
 
         for (size_t tr = 0; tr < count; tr++)
-            if (mat[vec][tr] == true) {
+            if (mat[vec][tr] == 1) {
                 auto t = triangles[tr];
                 t.A.print_terse(file); file << " ";
                 t.B.print_terse(file); file << " ";
@@ -121,10 +121,6 @@ void worker_main(th_queue<thread_task>* src) {
         auto task = src->take();
         if (task) {
             auto ans = task->ans;
-            if (ans == nullptr) {
-                std::cerr << "err: worker_main: task invalid, found nullptr!" << std::endl;
-                continue;
-            }
             const auto vec_c = task->vec;
             const auto count = triangles.size();
             for (size_t i = 0; i < count; i++)
@@ -132,6 +128,19 @@ void worker_main(th_queue<thread_task>* src) {
         }
         else std::this_thread::yield();
     }
+}
+
+bool check_matr(volatile char** mat, size_t* ind) {
+    const auto vec_count = vectors.size();
+    const auto count = triangles.size();
+    bool ret = false;
+    for (size_t i = 0; i < vec_count; i++)
+        if (mat[i][count - 1] == 2) {
+            ret = true;
+            *ind = i;
+            break;
+        }
+    return ret;
 }
 
 void solo_start() {
@@ -145,13 +154,13 @@ void solo_start() {
 
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();
-		volatile bool** ans_matr = new volatile bool*[vec_count];
+		volatile char** ans_matr = new volatile char*[vec_count];
         for (size_t i = 0; i < vec_count; i++) ans_matr[i] = nullptr;
 
         // Создаем потоки и очередь заданий
-        th_queue<thread_task> tasks;
+        th_queue<thread_task> *tasks = new th_queue<thread_task>;
         std::vector<std::thread> workers;
-        for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, &tasks);
+        for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, tasks);
 
         size_t chunks_count = 0;
         while (p.have_triangles()) {
@@ -164,19 +173,33 @@ void solo_start() {
             if (count == 0) break;
 
             for (size_t i = 0; i < vec_count; i++) {
-	    		ans_matr[i] = new volatile bool[count];
-		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = false;
+	    		ans_matr[i] = new volatile char[count];
+		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = 2;
     		}
 
             std::cout << "Calculating triangles: " << 1 + chunks_count
                         << " of " << chunks_count + count << std::endl;
-            
+
+            // Ждем завершения вычислений
             for (size_t i = 0; i < vec_count; i++) {
                 thread_task tmp = {vectors[i], ans_matr[i]};
-                tasks.add(tmp);
+                tasks->add(tmp);
             }
-            // Ждем завершения вычислений
-            while (!tasks.empty()) std::this_thread::yield();
+            while (tasks->count() > 0) std::this_thread::yield();
+
+            // Проверяем на выполнение вычислений
+            // При неизвестных условиях цикл в worker_main может не дойти до конца матрицы.
+            // Поэтому проходим по правому концу матрицы и пересчитываем.
+            bool errors = true;
+            while (errors) {
+                size_t ind = 0;
+                errors = check_matr(ans_matr, &ind);
+                if (errors) {
+                    thread_task tmp = {vectors[ind], ans_matr[ind]};
+                    tasks->add(tmp);
+                }
+                while (tasks->count() > 0) std::this_thread::yield();
+            }
     		
             // Сохраняем
             s.save_data(ans_matr, count);
@@ -202,7 +225,7 @@ void solo_start() {
     }
 }
 
-bool calc_collision(const triangle& t, const vec3 v) {
+char calc_collision(const triangle& t, const vec3 v) {
 	// Представляем треугольник как лучи от одной точки
 	const point dir(v.from, v.to);
 	point e1(t.A, t.B), e2(t.A, t.C);
@@ -212,20 +235,20 @@ bool calc_collision(const triangle& t, const vec3 v) {
 	float det = e1 * pvec;
 
 	// Луч параллелен плоскости
-	if (det < EPS && det > -EPS) return false;
+	if (det < EPS && det > -EPS) return 0;
 
 	float inv_det = 1 / det;
 	point tvec(t.A, v.from);
 
 	float coord_u = tvec * pvec * inv_det;
-	if (coord_u < 0.0 || coord_u > 1.0) return false;
+	if (coord_u < 0.0 || coord_u > 1.0) return 0;
 
 	point qvec = tvec | e1;
 	float coord_v = dir * qvec * inv_det;
-	if (coord_v < 0 || coord_u + coord_v > 1) return false;
+	if (coord_v < 0 || coord_u + coord_v > 1) return 0;
 
 	float coord_t = e2 * qvec * inv_det;
-	return (coord_t > EPS) ? true : false;
+	return (coord_t > EPS) ? 1 : 0;
 }
 
 void compress_output() {
