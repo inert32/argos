@@ -1,7 +1,9 @@
 #ifndef __TH_QUEUE_H__
 #define __TH_QUEUE_H__
 
-/* Потокобезопасная очередь */
+/* 
+    Потокобезопасная очередь
+*/
 
 #include <queue>
 #include <mutex>
