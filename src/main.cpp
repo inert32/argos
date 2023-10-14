@@ -6,7 +6,8 @@
 #include <string>
 #include <thread>
 
-#include "common.h"
+#include "settings.h"
+#include "base.h"
 #include "solo.h"
 
 std::filesystem::path verticies_file;
