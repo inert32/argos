@@ -9,6 +9,7 @@
 #include "th_queue.h"
 #include "base.h"
 #include "solo.h"
+#include "io.h"
 
 volatile bool stop = false;
 
@@ -41,12 +42,12 @@ bool check_matr(volatile char** mat, size_t* ind) {
 
 void solo_start() {
     try {
-        parser p;
-        saver s;
+        auto p = select_parser();
+        tmp_saver s;
 
         // Загружаем данные
 		vec3 load;
-		while (p.get_next_vector(&load)) vectors.push_back(load);
+		while (p->get_next_vector(&load)) vectors.push_back(load);
 
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();
@@ -62,10 +63,10 @@ void solo_start() {
         for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, tasks);
 
         size_t chunks_count = 0;
-        while (p.have_triangles()) {
+        while (p->have_triangles()) {
             // Загружаем треугольники
             triangle load2; size_t count = 0;
-	    	while (count < chunk_elements && p.get_next_triangle(&load2)) {
+	    	while (count < chunk_elements && p->get_next_triangle(&load2)) {
 		    	triangles.push_back(load2);
 			    count++;
 		    }
