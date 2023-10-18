@@ -51,7 +51,10 @@ void solo_start() {
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();
 		volatile char** ans_matr = new volatile char*[vec_count];
-        for (size_t i = 0; i < vec_count; i++) ans_matr[i] = nullptr;
+        for (size_t i = 0; i < vec_count; i++) {
+            ans_matr[i] = new volatile char[chunk_elements];
+            for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = 2;
+        }
 
         // Создаем потоки и очередь заданий
         th_queue<thread_task> *tasks = new th_queue<thread_task>;
@@ -67,11 +70,6 @@ void solo_start() {
 			    count++;
 		    }
             if (count == 0) break;
-
-            for (size_t i = 0; i < vec_count; i++) {
-	    		ans_matr[i] = new volatile char[count];
-		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = 2;
-    		}
 
             std::cout << "Calculating triangles: " << 1 + chunks_count
                         << " of " << chunks_count + count << std::endl;
@@ -102,15 +100,13 @@ void solo_start() {
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
-            for (size_t i = 0; i < vec_count; i++) {
-                delete[] ans_matr[i];
-                ans_matr[i] = nullptr;
-            }
             chunks_count+=count;
         }
         // Останавливаем потоки
         stop = true;
         for (size_t i = 0; i < threads_count; i++) workers[i].join();
+        for (size_t i = 0; i < vec_count; i++) delete[] ans_matr[i];
+        delete[] ans_matr;
         // При количестве треугольников больше чем chunks_elements
         // вектора в выходном файле будут повторяться. Исправляем.
         compress_output();
