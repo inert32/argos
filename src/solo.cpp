@@ -9,6 +9,7 @@
 #include "th_queue.h"
 #include "base.h"
 #include "solo.h"
+#include "io.h"
 
 // Флаг остановки потоков
 volatile bool stop = false;
@@ -44,17 +45,20 @@ bool check_matr(volatile char** mat, size_t* ind) {
 
 void solo_start() {
     try {
-        parser p;
-        saver s;
+        auto p = select_parser();
+		auto s = select_saver();
 
         // Загружаем данные
 		vec3 load;
-		while (p.get_next_vector(&load)) vectors.push_back(load);
+		while (p->get_next_vector(&load)) vectors.push_back(load);
 
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();
 		volatile char** ans_matr = new volatile char*[vec_count];
-        for (size_t i = 0; i < vec_count; i++) ans_matr[i] = nullptr;
+        for (size_t i = 0; i < vec_count; i++) {
+            ans_matr[i] = new volatile char[chunk_elements];
+            for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = 2;
+        }
 
         // Создаем потоки и очередь заданий
         th_queue<thread_task> *tasks = new th_queue<thread_task>;
@@ -62,10 +66,10 @@ void solo_start() {
         for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, tasks);
 
         size_t chunks_count = 0;
-        while (p.have_triangles()) {
+        while (p->have_triangles()) {
             // Загружаем треугольники
             triangle load2; size_t count = 0;
-	    	while (count < chunk_elements && p.get_next_triangle(&load2)) {
+	    	while (count < chunk_elements && p->get_next_triangle(&load2)) {
 		    	triangles.push_back(load2);
 			    count++;
 		    }
@@ -101,22 +105,24 @@ void solo_start() {
             }
     		
             // Сохраняем
-            s.save_data(ans_matr, count);
+            s->save_tmp(ans_matr, count);
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
-            for (size_t i = 0; i < vec_count; i++) {
-                delete[] ans_matr[i];
-                ans_matr[i] = nullptr;
-            }
             chunks_count+=count;
         }
         // Останавливаем потоки
         stop = true;
         for (size_t i = 0; i < threads_count; i++) workers[i].join();
+
+        for (size_t i = 0; i < vec_count; i++) delete[] ans_matr[i];
+        delete[] ans_matr;
         // При количестве треугольников больше чем chunks_elements
         // вектора в выходном файле будут повторяться. Исправляем.
-        compress_output();
+		std::cout << "Compressing output..." << std::endl;
+        s->save_final();
+
+		delete s; delete p;
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;

@@ -15,7 +15,7 @@ std::filesystem::path output_file = "output.list";
 unsigned int ipv4addr = (unsigned)-1;
 bool master_mode = false;
 unsigned int chunk_elements = 100;
-unsigned int threads_count = std::thread::hardware_concurrency();
+unsigned int threads_count = 0;
 
 void client_start() {}
 void master_start() {}
@@ -32,6 +32,17 @@ int show_help() {
     return 0;
 }
 
+// Установка количества потоков
+void threads_count_setup() {
+    if (threads_count == 0) {
+        const auto detect = std::thread::hardware_concurrency();
+        // hardware_concurrency() может не определить количество потоков процессора
+        if (detect == 0) threads_count = 1; 
+        else threads_count = detect / 2; // Берем только потоки физических процессоров
+    }
+}
+
+// Установка параметров командной строки
 bool parse_cli(int argc, char** argv) {
     if (argc == 1 || std::string(argv[1]) == "--help") return false;
     for (int i = 1; i < argc; i++) {
@@ -51,25 +62,26 @@ bool parse_cli(int argc, char** argv) {
             i++;
         }
         if (buf == "--chunk") {
-            try {
-                chunk_elements = std::stoi(argv[i + 1]);
-            }
-            catch (const std::exception&) {
-                std::cerr << "warn: parse_cli: no chunk count provided, using default: " << chunk_elements << std::endl;
+            if (i + 1 < argc) {
+                try {
+                    chunk_elements = std::stoi(argv[i + 1]);
+                }
+                catch (const std::exception&) {
+                    std::cerr << "warn: parse_cli: no chunk count provided, using default: " << chunk_elements << std::endl;
+                }
             }
             i++;
         }
         if (buf == "--threads") {
-            try {
-                threads_count = std::stoi(argv[i + 1]);
+            if (i + 1 < argc) {
+                try {
+                    threads_count = std::stoi(argv[i + 1]);
+                }
+                catch (const std::exception&) {
+                    std::cerr << "warn: parse_cli: no threads count provided, using default: " << threads_count << std::endl;
+                    threads_count = 0;
+                }
             }
-            catch (const std::exception&) {
-                std::cerr << "warn: parse_cli: no threads count provided, using default: " << threads_count << std::endl;
-            }
-            if (threads_count > std::thread::hardware_concurrency())
-                std::cerr << "warn: parse_cli: requested threads count exceed native (" 
-                << std::thread::hardware_concurrency() << ")" << std::endl;
-            if (threads_count == 0) threads_count = 1;
             i++;
         }
     }
@@ -84,6 +96,9 @@ int main(int argc, char** argv) {
     // Очищаем пути к файлам
     if (!verticies_file.empty()) verticies_file = std::filesystem::absolute(verticies_file);
     if (!output_file.empty()) output_file = std::filesystem::absolute(output_file);
+
+    threads_count_setup();
+    std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
     // Определяем режим работы
     if (ipv4addr == (unsigned)-1 && verticies_file.empty()) {
