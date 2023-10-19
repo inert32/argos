@@ -43,7 +43,7 @@ bool check_matr(volatile char** mat, size_t* ind) {
 void solo_start() {
     try {
         auto p = select_parser();
-        tmp_saver s;
+		auto s = select_saver();
 
         // Загружаем данные
 		vec3 load;
@@ -97,7 +97,7 @@ void solo_start() {
             }
     		
             // Сохраняем
-            s.save_data(ans_matr, count);
+            s->save_tmp(ans_matr, count);
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
@@ -106,11 +106,15 @@ void solo_start() {
         // Останавливаем потоки
         stop = true;
         for (size_t i = 0; i < threads_count; i++) workers[i].join();
+
         for (size_t i = 0; i < vec_count; i++) delete[] ans_matr[i];
         delete[] ans_matr;
         // При количестве треугольников больше чем chunks_elements
         // вектора в выходном файле будут повторяться. Исправляем.
-        compress_output();
+		std::cout << "Compressing output..." << std::endl;
+        s->save_final();
+
+		delete s; delete p;
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;

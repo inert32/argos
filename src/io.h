@@ -15,6 +15,7 @@
 class reader_base {
 public:
 	reader_base() = default;
+	~reader_base() = default;
 
 	// Получение треугольника из файла
 	virtual bool get_next_triangle(triangle* ret) = 0;
@@ -27,6 +28,7 @@ public:
 	virtual bool have_vectors() const = 0;
 };
 
+// Собственный формат файла вершин
 class reader_argos : public reader_base {
 public:
 	reader_argos();
@@ -44,18 +46,44 @@ private:
 	std::streampos triangles_current, vectors_current;
 };
 
+// Выбор парсера в зависимости от режима работы и типа файла
 reader_base* select_parser();
 
-// Сохранение результатов
-class tmp_saver {
+// Интерфейс для сохранения результатов
+class saver_base {
 public:
-	tmp_saver();
-	void save_data(volatile char** mat, const unsigned int count);
+	saver_base() = default;
+	~saver_base() = default;
+
+	// Сохранение чанка данных
+	virtual void save_tmp(volatile char** mat, const unsigned int count) = 0;
+
+	// Объединение временного файла в выходной файл
+	virtual void save_final() = 0;
+};
+
+// Сохранение результатов в файл
+class file_saver : public saver_base {
+public:
+	file_saver();
+
+	void save_tmp(volatile char** mat, const unsigned int count);
+	void save_final();
 private:
 	std::ofstream file;
 };
 
-// Сжатие выходного файла
-void compress_output();
+class dummy_saver : public saver_base {
+public:
+	dummy_saver() {};
+
+	void save_tmp(volatile char** mat, const unsigned int count) {
+		auto _count = count; auto _mat = mat;
+	}
+	void save_final() {}
+};
+
+// Выбор класса saver в зависимости от режима работы
+saver_base* select_saver();
 
 #endif /* __IO_H__ */
