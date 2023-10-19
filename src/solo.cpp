@@ -113,8 +113,6 @@ void solo_start() {
         // вектора в выходном файле будут повторяться. Исправляем.
 		std::cout << "Compressing output..." << std::endl;
         s->save_final();
-
-		delete s; delete p;
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;

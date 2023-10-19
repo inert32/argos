@@ -77,9 +77,7 @@ class dummy_saver : public saver_base {
 public:
 	dummy_saver() {};
 
-	void save_tmp(volatile char** mat, const unsigned int count) {
-		auto _count = count; auto _mat = mat;
-	}
+	void save_tmp(__attribute__((unused)) volatile char** mat, __attribute__((unused)) const unsigned int count) {}
 	void save_final() {}
 };
 
