@@ -103,9 +103,15 @@ void solo_start() {
                 }
                 while (tasks->count() > 0) std::this_thread::yield();
             }
-    		
+
             // Сохраняем
             s->save_tmp(ans_matr, count);
+
+            // Помечаем матрицу как непроверенную перед загрузкой новых треугольников
+            // До 0f4eb59d77c8a4a2d1a3efc87a03d9307a0b2260 матрица пересоздавалась 
+            // каждую итерацию цикла, теперь метку о заполнении строки нужно ставить вручную.
+            for (size_t i = 0; i < vec_count; i++)
+                ans_matr[i][chunk_elements - 1] = 2;
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
@@ -121,8 +127,6 @@ void solo_start() {
         // вектора в выходном файле будут повторяться. Исправляем.
 		std::cout << "Compressing output..." << std::endl;
         s->save_final();
-
-		delete s; delete p;
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;

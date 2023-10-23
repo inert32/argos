@@ -4,7 +4,7 @@ if(MSVC_VERSION LESS 1910)
 	message(FATAL_ERROR "This project require C++17")
 endif()
 
-project(argos_proj VERSION "0.1.2")
+project(argos_proj VERSION "0.1.3")
 configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
@@ -25,8 +25,12 @@ if (ARGOS_PVS)
     FetchContent_MakeAvailable(PVS_CMakeModule)
     include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
     
-    pvs_studio_add_target(TARGET argos.pvs ALL OUTPUT FORMAT tasklist
-        ANALYZE argos MODE 'GA:1,2,3;OP:1' LOG ../PVS_LOG )
+    pvs_studio_add_target(TARGET analyze ALL 
+                          OUTPUT 
+                          FORMAT tasklist
+                          ANALYZE argos
+                          MODE GA:1,2,3;OP:1,2
+                          LOG ../PVS_LOG )
 endif()
 # Add compiler-dependeded options
 

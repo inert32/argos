@@ -11,7 +11,7 @@ constexpr float EPS = 1e-6;
 std::vector<triangle> triangles;
 std::vector<vec3> vectors;
 
-char calc_collision(const triangle& t, const vec3 v) {
+char calc_collision(const triangle& t, const vec3& v) {
 	// Представляем треугольник как лучи от одной точки
 	const point dir(v.from, v.to);
 	point e1(t.A, t.B), e2(t.A, t.C);
