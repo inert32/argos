@@ -35,10 +35,10 @@ int show_help() {
 // Установка количества потоков
 void threads_count_setup() {
     if (threads_count == 0) {
-        const auto detect = std::thread::hardware_concurrency();
+        // Берем только потоки физических процессоров
+        threads_count = std::thread::hardware_concurrency() / 2;
         // hardware_concurrency() может не определить количество потоков процессора
-        if (detect == 0) threads_count = 1; 
-        else threads_count = detect / 2; // Берем только потоки физических процессоров
+        if (threads_count == 0) threads_count = 1;
     }
 }
 
@@ -77,7 +77,6 @@ bool parse_cli(int argc, char** argv) {
                     threads_count = std::stoi(argv[i + 1]);
                 }
                 catch (const std::exception&) {
-                    std::cerr << "warn: parse_cli: no threads count provided, using default: " << threads_count << std::endl;
                     threads_count = 0;
                 }
             }
