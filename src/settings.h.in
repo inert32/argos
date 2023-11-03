@@ -7,6 +7,7 @@
 */
 
 #include <filesystem>
+#include "network/net_base.h"
 
 constexpr char ARGOS_VERSION[] = "v@PROJECT_VERSION@";
 
@@ -15,12 +16,17 @@ extern std::filesystem::path verticies_file;
 // Путь до выходного файла
 extern std::filesystem::path output_file;
 
-// Адрес мастер-сервера. Не реализовано, do not use.
-// Используем int пока не появится сетевая подсистема
-extern unsigned int ipv4addr;
+// Адрес мастер-сервера.
+extern ipv4_t master_addr;
 
-// Ражим мастер-сервера. Не реализовано
+// Ражим мастер-сервера.
 extern bool master_mode;
+
+// Ждем указанное число клиентов перед началом работы
+extern unsigned int clients_required;
+
+// Максимальное число клиентов перед началом работы
+extern unsigned int clients_max;
 
 // Количество треугольников для расчета
 extern unsigned int chunk_elements;
