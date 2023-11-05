@@ -29,9 +29,12 @@ struct ipv4_t {
     int port = 3456;
 
     friend std::ostream& operator<<(std::ostream& os, const ipv4_t& p) {
-		os << p.ip << ":" << p.port;
-		return os;
-	}
+	    os << p.ip << ":" << p.port;
+	    return os;
+    }
+    void from_string(const std::string& str);
+    std::string to_string();
+    bool is_set();
 };
 
 struct capsule_t {
@@ -45,5 +48,7 @@ struct net_envelope {
     msg_types type = msg_types::BOTH_UNKNOWN;
     capsule_t msg_raw;
 };
+
+class socket_int;
 
 #endif /* __NET_BASE_H__ */

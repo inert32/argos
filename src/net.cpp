@@ -10,38 +10,35 @@
 
 ipv4_t master_addr;
 
-bool ipv4_isset(const ipv4_t* ip) {
-    bool ret = false;
-    for (int i = 0; i < ipv4_ip_len; i++)
-        if (ip->ip[i] != '\0') { ret = true; break; }
-    return ret;
-}
-
-ipv4_t string_to_ipv4(const std::string& str) {
-    ipv4_t ret;
-
+void ipv4_t::from_string(const std::string& str) {
     auto pos = str.find(':');
     std::string real_ip;
     if (pos != str.npos) {
-        ret.port = std::stoi(str.substr(pos + 1));
+        port = std::stoi(str.substr(pos + 1));
         real_ip = str.substr(0, pos);
     }
     else real_ip = str;
     const auto len = real_ip.length();
 
-    for (size_t i = 0; i < len; i++) ret.ip[i] = real_ip[i];
-    return ret;
+    for (size_t i = 0; i < len; i++) ip[i] = real_ip[i];
 }
 
-std::string ipv4_to_string(const ipv4_t& ip) {
+std::string ipv4_t::to_string() {
     std::string ret;
-    for (int i = 0; i < ipv4_ip_len; i++) ret.push_back(ip.ip[i]);
-    return ret + ":" + std::to_string(ip.port);
+    for (int i = 0; i < ipv4_ip_len; i++) ret.push_back(ip[i]);
+    return ret + ":" + std::to_string(port);
+}
+
+bool ipv4_t::is_set() {
+    bool ret = false;
+    for (int i = 0; i < ipv4_ip_len; i++)
+        if (ip[i] != '\0') { ret = true; break; }
+    return ret;
 }
 
 void client_start() {
     std::cout << "Client mode" << std::endl;
-    std::cout << "Connect to: " << ipv4_to_string(master_addr);
+    std::cout << "Connect to: " << master_addr.to_string();
     try {
         auto socket = new socket_int(3457);
 

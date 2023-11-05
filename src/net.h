@@ -12,10 +12,6 @@
     для работы с сетью
 */
 
-bool ipv4_isset(const ipv4_t* ip);
-ipv4_t string_to_ipv4(const std::string& str);
-std::string ipv4_to_string(const ipv4_t& ip);
-
 void client_start();
 void master_start();
 

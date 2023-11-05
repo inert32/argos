@@ -9,7 +9,6 @@
 #include "settings.h"
 #include "base.h"
 #include "net.h"
-#include "solo.h"
 
 std::filesystem::path verticies_file;
 std::filesystem::path output_file = "output.list";
@@ -17,6 +16,8 @@ bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
 unsigned int clients_required = 1;
+
+void solo_start();
 
 int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
@@ -77,7 +78,7 @@ bool parse_cli(int argc, char** argv) {
             }
         }
         if (buf == "--master") master_mode = true;
-        if (buf == "--connect") if (i + 1 < argc) master_addr = string_to_ipv4(argv[++i]);
+        if (buf == "--connect") if (i + 1 < argc) master_addr.from_string(argv[++i]);
     }
     return true;
 }
@@ -94,12 +95,12 @@ int main(int argc, char** argv) {
     std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
     // Определяем режим работы
-    if (!ipv4_isset(&master_addr) && verticies_file.empty()) {
+    if (!master_addr.is_set() && verticies_file.empty()) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
         return 1;
     }
 
-    if (ipv4_isset(&master_addr)) client_start();
+    if (master_addr.is_set()) client_start();
     else {
         if (master_mode) master_start();
         else solo_start();

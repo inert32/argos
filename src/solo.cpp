@@ -8,8 +8,12 @@
 #include "settings.h"
 #include "th_queue.h"
 #include "base.h"
-#include "solo.h"
 #include "io.h"
+
+struct thread_task {
+    vec3 vec; // Вектор для обработки
+    volatile char* ans = nullptr; // Строка в матрице ответов
+};
 
 volatile bool stop = false;
 

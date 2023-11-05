@@ -11,7 +11,7 @@ add_executable(argos
 src/main.cpp src/base.cpp src/solo.cpp
 src/io.cpp src/net.cpp src/network/net_linux.cpp
 
-src/settings.h src/base.h src/solo.h src/point.h
+src/settings.h src/base.h src/point.h
 src/io.h src/net.h src/network/net_internal.h)
 
 target_compile_features(argos PUBLIC cxx_std_17)
