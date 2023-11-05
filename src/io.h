@@ -8,6 +8,7 @@
 #include <fstream>
 #include <filesystem>
 #include "base.h"
+#include "network/net_base.h"
 
 // Чтение файла вершин для работы с ними
 
@@ -46,9 +47,6 @@ private:
 	std::streampos triangles_current, vectors_current;
 };
 
-// Выбор парсера в зависимости от режима работы и типа файла
-reader_base* select_parser();
-
 // Интерфейс для сохранения результатов
 class saver_base {
 public:
@@ -63,9 +61,9 @@ public:
 };
 
 // Сохранение результатов в файл
-class file_saver : public saver_base {
+class saver_file : public saver_base {
 public:
-	file_saver();
+	saver_file();
 
 	void save_tmp(volatile char** mat, const unsigned int count);
 	void save_final();
@@ -73,15 +71,18 @@ private:
 	std::ofstream file;
 };
 
-class dummy_saver : public saver_base {
+class saver_dummy : public saver_base {
 public:
-	dummy_saver() {};
+	saver_dummy() {};
 
-	void save_tmp(__attribute__((unused)) volatile char** mat, __attribute__((unused)) const unsigned int count) {}
+	void save_tmp([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
 	void save_final() {}
 };
 
 // Выбор класса saver в зависимости от режима работы
-saver_base* select_saver();
+saver_base* select_saver(socket_int* socket);
+
+// Выбор парсера в зависимости от режима работы и типа файла
+reader_base* select_parser(socket_int* socket);
 
 #endif /* __IO_H__ */

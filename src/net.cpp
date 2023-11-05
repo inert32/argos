@@ -36,28 +36,9 @@ bool ipv4_t::is_set() {
     return ret;
 }
 
-void client_start() {
-    std::cout << "Client mode" << std::endl;
-    std::cout << "Connect to: " << master_addr.to_string();
-    try {
-        auto socket = new socket_int(3457);
-
-        net_envelope msg;
-        msg.type = msg_types::CLIENT_CONNECT;
-        msg.to = master_addr;
-        socket->send_msg(&msg);
-        delete socket;
-    }
-    catch (const std::runtime_error& e) {
-		std::cerr << "err: " << e.what() << std::endl;
-		return;
-    }
-
-}
-void master_start() {
+void master_start(socket_int* socket) {
     std::cout << "MASTER MODE" << std::endl;
     try {
-        auto socket = new socket_int(3456);
         bool run = true;
         while (run) {
             net_envelope msg;

@@ -5,14 +5,39 @@
 #include "network/net_base.h"
 #include "base.h"
 #include "network/net_internal.h"
-#include "th_queue.h"
+#include "io.h"
 
 /*
     net.h: Платформо-независимые классы и функции
     для работы с сетью
 */
 
-void client_start();
-void master_start();
+class reader_network : public reader_base {
+public:
+    reader_network(socket_int* socket);
+    ~reader_network();
+
+	bool get_next_triangle(triangle* ret);
+	bool get_next_vector(vec3* ret);
+
+	bool have_triangles() const;
+	bool have_vectors() const;
+private:
+    socket_int* conn;
+    ipv4_t master;
+};
+class saver_network : public saver_base {
+public:
+    saver_network(socket_int* socket);
+    ~saver_network();
+
+	void save_tmp(volatile char** mat, const unsigned int count);
+	void save_final();
+private:
+    socket_int* conn;
+    ipv4_t master;
+};
+
+void master_start(socket_int* socket);
 
 #endif /* __NET_H__ */

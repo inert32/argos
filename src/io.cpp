@@ -82,29 +82,12 @@ bool reader_argos::have_vectors() const {
 	return file.eof();
 }
 
-reader_base* select_parser() {
-	std::ifstream file(verticies_file, std::ios::binary);
-	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
-
-	// Проверяем заголовки
-	std::string header;
-	std::getline(file, header);
-	file.close();
-
-	if (header[0] == 'V' && header[1] == ':') {
-		auto ret = new reader_argos();
-		return ret;
-	}
-	else // Неизвестный формат 
-		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
-}
-
-file_saver::file_saver() : saver_base() {
+saver_file::saver_file() : saver_base() {
 	file.open(output_file.string() + ".tmp", std::ios::app | std::ios::ate | std::ios::binary);
 	if (!file.good()) throw std::runtime_error("saver: Failed to open file " + output_file.string() + ".tmp");
 }
 
-void file_saver::save_tmp(volatile char** mat, const unsigned int count) {
+void saver_file::save_tmp(volatile char** mat, const unsigned int count) {
 	const size_t vec_count = vectors.size();
 	// Для каждого вектора указываем 
 	for (size_t vec = 0; vec < vec_count; vec++) {
@@ -124,7 +107,7 @@ void file_saver::save_tmp(volatile char** mat, const unsigned int count) {
 	file.flush();
 }
 
-void file_saver::save_final() {
+void saver_file::save_final() {
 	const auto base_path = output_file.string() + ".tmp";
 	std::ifstream base(base_path); // Выходной файл до сжатия
 	if (!base.good()) throw std::runtime_error("compress_output: is " + base_path + " not exists?");
@@ -154,9 +137,4 @@ void file_saver::save_final() {
 	base.close();
 	out.close();
 	std::filesystem::remove(base_path);
-}
-
-saver_base* select_saver() {
-	auto ret = new file_saver;
-	return ret;
 }

@@ -44,10 +44,10 @@ bool check_matr(volatile char** mat, size_t* ind) {
     return ret;
 }
 
-void solo_start() {
+void solo_start(socket_int* socket) {
     try {
-        auto p = select_parser();
-		auto s = select_saver();
+        auto p = select_parser(socket);
+		auto s = select_saver(socket);
 
         // Загружаем данные
 		vec3 load;

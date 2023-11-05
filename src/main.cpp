@@ -17,7 +17,7 @@ unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
 unsigned int clients_required = 1;
 
-void solo_start();
+void solo_start(socket_int* socket);
 
 int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
@@ -94,17 +94,48 @@ int main(int argc, char** argv) {
     threads_count_setup();
     std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
-    // Определяем режим работы
     if (!master_addr.is_set() && verticies_file.empty()) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
         return 1;
     }
 
-    if (master_addr.is_set()) client_start();
+    // Определяем режим работы
+    if (master_mode) { // Режим мастера
+        auto socket = new socket_int(3456);
+        master_start(socket);
+        delete socket;
+    }
     else {
-        if (master_mode) master_start();
-        else solo_start();
+        if (master_addr.is_set()) { // Режим клиента
+            auto socket = new socket_int(0);
+            solo_start(socket);
+            delete socket;
+        }
+        else solo_start(nullptr); // Одиночный режим
     }
 
     return 0;
+}
+
+reader_base* select_parser([[maybe_unused]] socket_int* socket) {
+	//if (socket != nullptr) return new reader_network(socket);
+
+	std::ifstream file(verticies_file, std::ios::binary);
+	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
+
+	// Проверяем заголовки
+	std::string header;
+	std::getline(file, header);
+	file.close();
+
+	if (header[0] == 'V' && header[1] == ':') // Старый формат
+		return new reader_argos();
+	else // Неизвестный формат 
+		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
+}
+
+saver_base* select_saver([[maybe_unused]] socket_int* socket) {
+	//if (socket != nullptr) return new saver_network(socket);
+
+	return new saver_file;
 }
