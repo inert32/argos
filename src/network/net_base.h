@@ -11,7 +11,7 @@ enum class msg_types {
     BOTH_UNKNOWN = 0,
 
     SERVER_CLIENT_ACCEPT,
-    SERVER_CLIENT_NACCPET,
+    SERVER_CLIENT_NOT_ACCEPT,
     SERVER_DATA,
     SERVER_DONE,
         

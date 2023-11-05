@@ -3,8 +3,8 @@
 
 #include "settings.h"
 #include "network/net_base.h"
-#include "base.h"
 #include "network/net_internal.h"
+#include "base.h"
 #include "io.h"
 
 /*
@@ -24,7 +24,6 @@ public:
 	bool have_vectors() const;
 private:
     socket_int* conn;
-    ipv4_t master;
 };
 class saver_network : public saver_base {
 public:
@@ -35,7 +34,6 @@ public:
 	void save_final();
 private:
     socket_int* conn;
-    ipv4_t master;
 };
 
 void master_start(socket_int* socket);

@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
     }
     else {
         if (master_addr.is_set()) { // Режим клиента
-            auto socket = new socket_int(0);
+            auto socket = new socket_int(3700);
             solo_start(socket);
             delete socket;
         }
