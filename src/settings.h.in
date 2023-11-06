@@ -19,6 +19,12 @@ extern std::filesystem::path output_file;
 // Адрес мастер-сервера.
 extern ipv4_t master_addr;
 
+// Входящий порт подключения к мастеру
+extern size_t conn_port_master;
+
+// Входящий порт подключения к клиенту
+extern size_t conn_port_client;
+
 // Ражим мастер-сервера.
 extern bool master_mode;
 

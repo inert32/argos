@@ -16,6 +16,8 @@ bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
 ipv4_t master_addr;
+size_t conn_port_master = 6750;
+size_t conn_port_client = 6700;
 
 void solo_start(socket_int* socket);
 
@@ -101,13 +103,13 @@ int main(int argc, char** argv) {
 
     // Определяем режим работы
     if (master_mode) { // Режим мастера
-        auto socket = new socket_int(3456);
+        auto socket = new socket_int(conn_port_master);
         master_start(socket);
         delete socket;
     }
     else {
         if (master_addr.is_set()) { // Режим клиента
-            auto socket = new socket_int(3700);
+            auto socket = new socket_int(conn_port_client);
             solo_start(socket);
             delete socket;
         }
@@ -117,7 +119,7 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-reader_base* select_parser([[maybe_unused]] socket_int* socket) {
+reader_base* select_parser(socket_int* socket) {
 	if (socket != nullptr) return new reader_network(socket);
 
 	std::ifstream file(verticies_file, std::ios::binary);
@@ -134,7 +136,7 @@ reader_base* select_parser([[maybe_unused]] socket_int* socket) {
 		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
 }
 
-saver_base* select_saver([[maybe_unused]] socket_int* socket) {
+saver_base* select_saver(socket_int* socket) {
 	if (socket != nullptr) return new saver_network(socket);
 
 	return new saver_file;

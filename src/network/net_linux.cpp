@@ -3,13 +3,12 @@
 #ifdef __linux__
 
 #include <iostream>
-#include <cstring>
 
+#include <cstring>
 #include <vector>
 #include <stdexcept>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <string.h>
 #include "net_internal.h"
 
 // Макрос для упрощения исключений
@@ -25,9 +24,8 @@ socket_int::socket_int(size_t port) {
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     
     addr_local = *(sockaddr*)&addr;
-    addr_len = sizeof(addr);
 
-    if (bind(in, &addr_local, addr_len) < 0) throw_err("Bind fail");
+    if (bind(in, &addr_local, sizeof(addr)) < 0) throw_err("Bind fail");
 }
 
 socket_int::~socket_int() {
@@ -37,9 +35,14 @@ socket_int::~socket_int() {
 void socket_int::get_msg(net_envelope* msg) {
     if (listen(in, 1) == -1) throw_err("Listen fail");
     
-    sockaddr_t client_data; socklen_t client_len;
+    sockaddr_t client_data; sock_len client_len = sizeof(client_data);
     socket_t client = accept(in, &client_data, &client_len);
     if (client < 0) throw_err("Accept fail");
+
+    // Сохраняем адрес клиента
+    const auto client_addr = (sockaddr_in *)&client_data;
+    inet_ntop(AF_INET, &client_addr->sin_addr, msg->from.ip, ipv4_ip_len);
+    msg->from.port = ntohs(client_addr->sin_port);
 
     // Сохраняем данные в временном контейнере
     std::vector<char> buf_str;
@@ -52,11 +55,10 @@ void socket_int::get_msg(net_envelope* msg) {
     if (buf_str.size() == 0) return;
     auto bytes_read = buf_str.size();
 
-    msg->from = get_ip(&client_data);
     msg->type = (msg_types)buf_str[0];
     msg->msg_raw.len = bytes_read - 1;
     msg->msg_raw.data = new char[bytes_read - 1];
-    strncpy(msg->msg_raw.data, &buf_str[1], bytes_read - 1);
+    std::memcpy(msg->msg_raw.data, &buf_str[1], bytes_read - 1);
 }
 
 void socket_int::send_msg(net_envelope* msg) {
@@ -72,29 +74,18 @@ void socket_int::send_msg(net_envelope* msg) {
         
     auto dest_final = (sockaddr*)&dest_addr;
         
-    auto status = connect(out, dest_final, addr_len); // Подключаемся
+    auto status = connect(out, dest_final, sizeof(dest_addr)); // Подключаемся
     if(status < 0) throw_err("Connect fail");
 
     capsule_t msg_raw;
     msg_raw.len = msg->msg_raw.len + 1;
     msg_raw.data = new char[msg_raw.len];
     msg_raw.data[0] = (char)msg->type;
-    strncpy(&msg_raw.data[1], msg->msg_raw.data, msg->msg_raw.len);
+    std::memcpy(&msg_raw.data[1], msg->msg_raw.data, msg->msg_raw.len);
         
     status = sendto(out, msg_raw.data, msg_raw.len, MSG_NOSIGNAL, dest_final, sizeof(dest_addr)); // Отправляем
     if(status <= 0) throw_err("Send fail");
     close(out);
-}
-
-ipv4_t socket_int::get_ip(const sockaddr_t* src) const {
-    ipv4_t ret;
-    sockaddr_in data = *(sockaddr_in*)(src == nullptr ? &addr_local : src);
-
-    auto ip_raw = inet_ntoa(data.sin_addr);
-    if (ip_raw) strncpy(ret.ip, ip_raw, ipv4_ip_len);
-
-    ret.port = ntohs(data.sin_port);
-    return ret;
 }
 
 std::string socket_int::err_msg(const std::string& msg) const {

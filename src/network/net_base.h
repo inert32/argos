@@ -26,7 +26,7 @@ enum class msg_types {
 constexpr auto ipv4_ip_len = 16;
 struct ipv4_t {
     char ip[ipv4_ip_len] = "\0\0\0\0\0\0\0\0\0\0";
-    int port = 3456;
+    int port = 0;
 
     friend std::ostream& operator<<(std::ostream& os, const ipv4_t& p) {
 	    os << p.ip << ":" << p.port;

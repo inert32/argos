@@ -9,10 +9,11 @@ configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
 src/main.cpp src/base.cpp src/solo.cpp src/convert.cpp
-src/io.cpp src/net.cpp src/network/net_linux.cpp
+src/io.cpp src/net.cpp src/network/net_linux.cpp src/network/clients.cpp
 
 src/settings.h src/base.h src/point.h src/convert.h src/th_queue.h
-src/io.h src/net.h src/network/net_base.h src/network/net_internal.h)
+src/io.h src/net.h src/network/net_base.h src/network/net_internal.h
+src/network/clients.h)
 
 target_compile_features(argos PUBLIC cxx_std_17)
 

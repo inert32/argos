@@ -3,11 +3,14 @@
 
 #include <iostream>
 #include <fstream>
+#include <thread>
 #include <cstring>
+#include "th_queue.h"
 #include "net.h"
 #include "io.h"
 #include "base.h"
 #include "convert.h"
+#include "network/clients.h"
 
 void ipv4_t::from_string(const std::string& str) {
     auto pos = str.find(':');
@@ -35,52 +38,57 @@ bool ipv4_t::is_set() {
     return ret;
 }
 
-bool ip_equal(ipv4_t left, ipv4_t right) {
-    return strncmp(left.ip, right.ip, ipv4_ip_len) == 0;
+void recv_thread(th_queue<net_envelope>* queue, socket_int* socket, volatile bool* run) {
+    while (*run == true) {
+        net_envelope msg;
+        socket->get_msg(&msg);
+        queue->add(msg);
+    }
 }
 
 void master_start(socket_int* socket) {
-    std::cout << "MASTER MODE" << std::endl;
+    std::cout << "Master mode" << std::endl;
     try {
         auto parser = select_parser(nullptr);
         //auto saver = select_saver(nullptr);
-        std::vector<ipv4_t> clients;
+        clients_list clients(15);
 
-        bool run = true;
+        th_queue<net_envelope> msg_queue;
+        volatile bool run = true;
+        auto recieve = new std::thread(recv_thread, &msg_queue, socket, &run);
+
         while (run) {
-            net_envelope msg, ans;
-            socket->get_msg(&msg);
+            auto task = msg_queue.take();
+            if (!task) continue;
+            net_envelope msg = *task, ans;
 
             // Клиент известен?
-            std::cout << "Connect from " << msg.from << ", type " << (int)msg.type;
-            bool known = false;
-            for (auto& c : clients)
-                if (ip_equal(c, msg.from)) {
-                    known = true;
-                    ans.to = c;
-                    break;
+            if (!clients.in_array(msg.from.ip, nullptr)
+                && msg.type == msg_types::CLIENT_CONNECT) {
+                ans.to = msg.from;
+                conv_t<size_t> conv;
+                std::memcpy(conv.side1, msg.msg_raw.data, sizeof(size_t));
+
+                ans.to.port = conv.side2;
+                if (clients.add(ans.to)) {
+                    std::cout << "Client add: " << ans.to << std::endl;
+                    ans.type = msg_types::SERVER_CLIENT_ACCEPT;
                 }
-            if (!known && msg.type != msg_types::CLIENT_CONNECT) {
-                std::cout << ", reject";
+                else {
+                    std::cout << "Client not add: " << ans.to << std::endl;
+                    ans.type = msg_types::SERVER_CLIENT_NOT_ACCEPT;
+                }
+
+                try { socket->send_msg(&ans); }
+                catch (const std::exception& e) {
+                    std::cerr << e.what() << ", removing client." << std::endl;
+                    clients.remove(ans.to.ip);
+                }
                 continue;
             }
-            std::cout << std::endl;
+            ans.to = clients.find_by_ip(msg.from.ip, nullptr);
 
             switch(msg.type) {
-            case msg_types::CLIENT_CONNECT: {
-                ipv4_t c = msg.from;
-                conv_t<size_t> conv;
-                for (size_t i = 0; i < sizeof(size_t); i++) conv.side1[i] = msg.msg_raw.data[i];
-                c.port = conv.side2;
-
-                std::cout << "Client add: " << c << std::endl;
-                clients.push_back(c);
-                ans.to = c;
-                ans.type = msg_types::SERVER_CLIENT_ACCEPT;
-                try { socket->send_msg(&ans); }
-                catch (const std::exception& e) {}
-                break;
-            }
             case msg_types::CLIENT_GET_VECTORS: {
                 std::cout << "Client " << ans.to << " requested vectors." << std::endl;
                 vec3 load;
@@ -93,7 +101,9 @@ void master_start(socket_int* socket) {
                     ans.type = msg_types::SERVER_DONE;
                 }
                 try { socket->send_msg(&ans); }
-                catch (const std::exception& e) {}
+                catch (const std::exception& e) {
+                    std::cerr << e.what() << std::endl;
+                }
                 break;
             }
             case msg_types::CLIENT_GET_TRIANGLES: {
@@ -108,16 +118,18 @@ void master_start(socket_int* socket) {
                     ans.type = msg_types::SERVER_DONE;
                 }
                 try { socket->send_msg(&ans); }
-                catch (const std::exception& e) {}
+                catch (const std::exception& e) {
+                    std::cerr << e.what() << std::endl;
+                }
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {
-                for (auto i = clients.begin(); i != clients.end(); ++i)
-                    if (ip_equal(*i, msg.from)) {
-                        std::cout << "Client " << *i << " disconnect.";
-                        clients.erase(i);
-                        break;
-                    }
+                size_t ind;
+                auto c = clients.find_by_ip(msg.from.ip, &ind);
+                if (ind == (size_t)-1) break;
+
+                std::cout << "Client " << c << " disconnect.";
+                clients.remove(ind);
                 break;
             }
             default:
@@ -125,6 +137,9 @@ void master_start(socket_int* socket) {
                 break;
             }
         }
+        run = false;
+        recieve->join();
+        delete recieve;
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;
@@ -138,13 +153,15 @@ reader_network::reader_network(socket_int* socket) {
 
     net_envelope start;
     start.to = master_addr;
+    if (start.to.port == 0) start.to.port = conn_port_master;
     start.type = msg_types::CLIENT_CONNECT;
+
     // Передаем серверу порт для подключения к нам
     start.msg_raw.data = new char[sizeof(size_t)];
     start.msg_raw.len = sizeof(size_t);
     conv_t<size_t> conv;
-    conv.side2 = 3700;
-    for (size_t i = 0; i < sizeof(size_t); i++) start.msg_raw.data[i] = conv.side1[i];
+    conv.side2 = conn_port_client;
+    std::memcpy(start.msg_raw.data, conv.side1, sizeof(size_t));
     conn->send_msg(&start);
 
     net_envelope ans;

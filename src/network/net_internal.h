@@ -14,7 +14,7 @@
 #ifdef __linux__
 typedef int socket_t;
 typedef sockaddr sockaddr_t;
-typedef unsigned int socklen_t;
+typedef socklen_t sock_len;
 #endif 
 
 class socket_int {
@@ -24,11 +24,9 @@ public:
 
     void get_msg(net_envelope* msg);
     void send_msg(net_envelope* msg);
-    ipv4_t get_ip(const sockaddr_t* src) const;
 private:
     socket_t in;
     sockaddr_t addr_local;
-    socklen_t addr_len;
 
     std::string err_msg(const std::string& msg) const;
 };
