@@ -22,12 +22,6 @@ extern ipv4_t master_addr;
 // Ражим мастер-сервера.
 extern bool master_mode;
 
-// Ждем указанное число клиентов перед началом работы
-extern unsigned int clients_required;
-
-// Максимальное число клиентов перед началом работы
-extern unsigned int clients_max;
-
 // Количество треугольников для расчета
 extern unsigned int chunk_elements;
 

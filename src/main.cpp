@@ -15,7 +15,7 @@ std::filesystem::path output_file = "output.list";
 bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
-unsigned int clients_required = 1;
+ipv4_t master_addr;
 
 void solo_start(socket_int* socket);
 
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 }
 
 reader_base* select_parser([[maybe_unused]] socket_int* socket) {
-	//if (socket != nullptr) return new reader_network(socket);
+	if (socket != nullptr) return new reader_network(socket);
 
 	std::ifstream file(verticies_file, std::ios::binary);
 	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
@@ -135,7 +135,7 @@ reader_base* select_parser([[maybe_unused]] socket_int* socket) {
 }
 
 saver_base* select_saver([[maybe_unused]] socket_int* socket) {
-	//if (socket != nullptr) return new saver_network(socket);
+	if (socket != nullptr) return new saver_network(socket);
 
 	return new saver_file;
 }

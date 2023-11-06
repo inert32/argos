@@ -24,16 +24,18 @@ public:
 	bool have_vectors() const;
 private:
     socket_int* conn;
+    bool server_have_triangles = true;
 };
 class saver_network : public saver_base {
 public:
     saver_network(socket_int* socket);
     ~saver_network();
 
-	void save_tmp(volatile char** mat, const unsigned int count);
-	void save_final();
+	void save_tmp(volatile char** mat, const unsigned int count); // Промежуточные результаты сохраняются на диск
+	void save_final(); // Окончательные передаются мастеру
 private:
     socket_int* conn;
+    std::fstream file;
 };
 
 void master_start(socket_int* socket);
