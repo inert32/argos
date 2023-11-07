@@ -20,7 +20,7 @@ reader_argos::reader_argos() : reader_base() {
 	file.seekg(vec_pos);
 	if (file.eof()) throw std::runtime_error("parser: " + verticies_file.string() + " corrupt.");
 
-	vectors_start = vectors_current = vec_pos;
+	vectors_start = vec_pos;
 }
 
 bool reader_argos::get_next_triangle(triangle* ret) {
@@ -47,39 +47,36 @@ bool reader_argos::get_next_triangle(triangle* ret) {
 	return true;
 }
 
-bool reader_argos::get_next_vector(vec3* ret) {
+void reader_argos::get_vectors() {
 	file.clear();
-	file.seekg(vectors_current);
+	file.seekg(vectors_start);
 
-	std::string buf;
-	std::getline(file, buf);
+	while (!file.eof()) {
+		std::string buf;
+		std::getline(file, buf);
 
-	if (file.eof() || buf.empty()) return false;
+		if (file.eof() || buf.empty()) return;
 
-	float coord[6];
-	size_t space = 0, next_space = 0;
-	for (int i = 0; i < 6; i++) {
-		next_space = buf.find(' ', space);
-		coord[i] = std::stod(buf.substr(space, next_space));
-		space = next_space + 1;
+		float coord[6];
+		size_t space = 0, next_space = 0;
+		for (int i = 0; i < 6; i++) {
+			next_space = buf.find(' ', space);
+			coord[i] = std::stod(buf.substr(space, next_space));
+			space = next_space + 1;
+		}
+		vec3 ret;
+		ret.from.x = coord[0];
+		ret.from.y = coord[1];
+		ret.from.z = coord[2];
+		ret.to.x = coord[3];
+		ret.to.y = coord[4];
+		ret.to.z = coord[5];
+		vectors.push_back(ret);
 	}
-	ret->from.x = coord[0];
-	ret->from.y = coord[1];
-	ret->from.z = coord[2];
-	ret->to.x = coord[3];
-	ret->to.y = coord[4];
-	ret->to.z = coord[5];
-
-	vectors_current = file.tellg();
-	return true;
 }
 
 bool reader_argos::have_triangles() const {
 	return triangles_current < vectors_start;
-}
-
-bool reader_argos::have_vectors() const {
-	return file.eof();
 }
 
 reader_base* select_parser() {
@@ -99,12 +96,12 @@ reader_base* select_parser() {
 		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
 }
 
-file_saver::file_saver() : saver_base() {
+saver_file::saver_file() : saver_base() {
 	file.open(output_file.string() + ".tmp", std::ios::app | std::ios::ate | std::ios::binary);
 	if (!file.good()) throw std::runtime_error("saver: Failed to open file " + output_file.string() + ".tmp");
 }
 
-void file_saver::save_tmp(volatile char** mat, const unsigned int count) {
+void saver_file::save_tmp(volatile char** mat, const unsigned int count) {
 	const size_t vec_count = vectors.size();
 	// Для каждого вектора указываем 
 	for (size_t vec = 0; vec < vec_count; vec++) {
@@ -124,7 +121,7 @@ void file_saver::save_tmp(volatile char** mat, const unsigned int count) {
 	file.flush();
 }
 
-void file_saver::save_final() {
+void saver_file::save_final() {
 	const auto base_path = output_file.string() + ".tmp";
 	std::ifstream base(base_path); // Выходной файл до сжатия
 	if (!base.good()) throw std::runtime_error("compress_output: is " + base_path + " not exists?");
@@ -157,6 +154,6 @@ void file_saver::save_final() {
 }
 
 saver_base* select_saver() {
-	auto ret = new file_saver;
+	auto ret = new saver_file;
 	return ret;
 }
