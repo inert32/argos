@@ -19,13 +19,11 @@ public:
 
 	// Получение треугольника из файла
 	virtual bool get_next_triangle(triangle* ret) = 0;
-	// Получение вектора из файла
-	virtual bool get_next_vector(vec3* ret) = 0;
+	// Получение векторов из файла
+	virtual void get_vectors() = 0;
 
 	// Проверка наличия треугольников в файле
 	virtual bool have_triangles() const = 0;
-	// Проверка наличия векторов в файле
-	virtual bool have_vectors() const = 0;
 };
 
 // Собственный формат файла вершин
@@ -35,15 +33,14 @@ public:
 
 	// Получение треугольника из файла
 	bool get_next_triangle(triangle* ret);
-	// Получение вектора из файла
-	bool get_next_vector(vec3* ret);
+	// Получение векторов из файла
+	void get_vectors();
 
 	bool have_triangles() const;
-	bool have_vectors() const;
 private:
 	std::ifstream file;
 	std::streampos triangles_start, vectors_start;
-	std::streampos triangles_current, vectors_current;
+	std::streampos triangles_current;
 };
 
 // Выбор парсера в зависимости от режима работы и типа файла
@@ -63,9 +60,9 @@ public:
 };
 
 // Сохранение результатов в файл
-class file_saver : public saver_base {
+class saver_file : public saver_base {
 public:
-	file_saver();
+	saver_file();
 
 	void save_tmp(volatile char** mat, const unsigned int count);
 	void save_final();
@@ -73,11 +70,11 @@ private:
 	std::ofstream file;
 };
 
-class dummy_saver : public saver_base {
+class saver_dummy : public saver_base {
 public:
-	dummy_saver() {};
+	saver_dummy() {};
 
-	void save_tmp(__attribute__((unused)) volatile char** mat, __attribute__((unused)) const unsigned int count) {}
+	void save_tmp([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
 	void save_final() {}
 };
 

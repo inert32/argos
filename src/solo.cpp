@@ -48,9 +48,8 @@ void solo_start() {
         auto p = select_parser();
 		auto s = select_saver();
 
-        // Загружаем данные
-		vec3 load;
-		while (p->get_next_vector(&load)) vectors.push_back(load);
+        // Загружаем векторы
+        p->get_vectors();
 
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();
@@ -111,7 +110,7 @@ void solo_start() {
             // До 0f4eb59d77c8a4a2d1a3efc87a03d9307a0b2260 матрица пересоздавалась 
             // каждую итерацию цикла, теперь метку о заполнении строки нужно ставить вручную.
             for (size_t i = 0; i < vec_count; i++)
-                ans_matr[i][chunk_elements - 1] = 2;
+                ans_matr[i][count - 1] = 2;
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
