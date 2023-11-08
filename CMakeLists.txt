@@ -9,10 +9,10 @@ configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
 src/main.cpp src/base.cpp src/solo.cpp
-src/io.cpp
+src/io.cpp src/net.cpp
 
 src/settings.h src/base.h src/solo.h src/point.h
-src/io.h)
+src/io.h src/net.h src/net_def.h)
 
 target_compile_features(argos PUBLIC cxx_std_17)
 

@@ -9,25 +9,25 @@
 #include "settings.h"
 #include "base.h"
 #include "solo.h"
+#include "net.h"
 
 std::filesystem::path verticies_file;
 std::filesystem::path output_file = "output.list";
-unsigned int ipv4addr = (unsigned)-1;
+ipv4_t master_addr;
 bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
 
-void client_start() {}
-void master_start() {}
-
 int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
     std::cout << "     --file <PATH>     - use verticies file" << std::endl;
-    std::cout << "(N/A)--connect <ADDR>  - connect to master server (IPv4 only)" << std::endl;
-    std::cout << "(N/A)--master          - be master node" << std::endl;
+    std::cout << "     --connect <ADDR>  - connect to master server (IPv4 only)" << std::endl;
+    std::cout << "     --master          - be master node" << std::endl;
     std::cout << "     --output <PATH>   - path to the output file (default " << output_file << ")" << std::endl;
     std::cout << "     --chunk <COUNT>   - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
     std::cout << "     --threads <COUNT> - count of threads for calculation (default " << threads_count << ")" << std::endl;
+    std::cout << "     --port <PORT>     - set server port (default " << port_server << ")" << std::endl;
+    std::cout << "     --clients <NUM>   - set maximum clients count (default " << clients_max << ")" << std::endl;
     std::cout << "     --help            - this help" << std::endl;
     return 0;
 }
@@ -49,42 +49,59 @@ bool parse_cli(int argc, char** argv) {
         std::string buf(argv[i]);
 
         if (buf == "--file") {
-            if (i + 1 < argc) verticies_file = argv[i + 1];
+            if (i + 1 < argc) verticies_file = argv[++i];
             else {
                 std::cerr << "err: parse_cli: no verticies file provided." << std::endl;
                 return false;
             }
-            i++;
         }
         if (buf == "--output") {
-            if (i + 1 < argc) output_file = argv[i + 1];
+            if (i + 1 < argc) output_file = argv[++i];
             else std::cerr << "warn: parse_cli: no output file provided, using default: " << output_file << std::endl;
-            i++;
         }
         if (buf == "--chunk") {
             if (i + 1 < argc) {
                 try {
-                    chunk_elements = std::stoi(argv[i + 1]);
+                    chunk_elements = std::stoi(argv[++i]);
                 }
                 catch (const std::exception&) {
                     std::cerr << "warn: parse_cli: no chunk count provided, using default: " << chunk_elements << std::endl;
                 }
             }
-            i++;
         }
         if (buf == "--threads") {
             if (i + 1 < argc) {
                 try {
-                    threads_count = std::stoi(argv[i + 1]);
+                    threads_count = std::stoi(argv[++i]);
                 }
                 catch (const std::exception&) {
                     threads_count = 0;
                 }
             }
-            i++;
+        }
+        if (buf == "--master") master_mode = true;
+        if (buf == "--connect") if (i + 1 < argc) master_addr.from_string(argv[++i]);
+        if (buf == "--port") {
+            if (i + 1 < argc) {
+                try {
+                    port_server = std::stoi(argv[++i]);
+                }
+                catch (const std::exception&) {
+                    port_server = 3700;
+                }
+            }
+        }
+        if (buf == "--clients") {
+            if (i + 1 < argc) {
+                try {
+                    clients_max = std::stoi(argv[++i]);
+                }
+                catch (const std::exception&) {
+                    clients_max = 10;
+                }
+            }
         }
     }
-    
     return true;
 }
 
@@ -100,12 +117,12 @@ int main(int argc, char** argv) {
     std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
     // Определяем режим работы
-    if (ipv4addr == (unsigned)-1 && verticies_file.empty()) {
+    if (verticies_file.empty() && !master_addr) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
         return 1;
     }
 
-    if (ipv4addr != (unsigned)-1) client_start();
+    if (master_addr) client_start();
     else {
         if (master_mode) master_start();
         else solo_start();
