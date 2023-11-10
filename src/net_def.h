@@ -4,10 +4,12 @@
 #include <ostream>
 #include <cstring>
 
+extern unsigned int port_server;
+
 constexpr size_t ipv4_ip_len = 16;
 struct ipv4_t {
     char ip[ipv4_ip_len] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-    size_t port = 0;
+    size_t port = port_server;
 
     operator bool() const {
         return strcmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0") != 0;

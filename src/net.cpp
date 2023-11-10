@@ -17,12 +17,10 @@
 #include "net.h"
 
 unsigned int clients_max = 10;
-
 unsigned int port_server = 3700;
 
 unsigned int clients_now = 0;
-bool netd_accept = false;
-bool netd_clients = false;
+bool netd_started = false;
 
 int setup_socket() {
     int ret = socket(AF_INET, SOCK_STREAM, 0);
@@ -55,37 +53,32 @@ int setup_socket() {
     return ret;
 }
 
-void netd_server_accept(int* sock_in, int* sock_list, volatile bool* run) {
+unsigned int find_slot(const int* sock_list) {
+    for (unsigned int i = 0; i < clients_max; i++)
+        if (sock_list[i] == -2) return i;
+    return (unsigned int)-1;
+}
+
+void netd_server(int* sock_in, int* sock_list, th_queue<net_msg>* queue, volatile bool* run) {
     const char accepted = (char)msg_types::SERVER_CLIENT_ACCEPT;
     const char not_accepted = (char)msg_types::SERVER_CLIENT_NOT_ACCEPT;
-    netd_accept = true;
+    char msg_raw[8192];
+    netd_started = true;
 
     while (*run == true) {
         int try_accept = accept(*sock_in, nullptr, nullptr);
-        if (try_accept < 0) continue;
-        if (clients_now == clients_max) {
-            send(try_accept, &not_accepted, 1, 0);
-            continue;
-        }
-        for (unsigned int i = 0; i < clients_max; i++) {
-            if (sock_list[i] == -2) {
-                sock_list[i] = try_accept;
+        if (try_accept >= 0) {
+            if (clients_now < clients_max) {
+                auto ind = find_slot(sock_list);
+                sock_list[ind] = try_accept;
                 clients_now++;
                 send(try_accept, &accepted, 1, 0);
-                break;
             }
+            else send(try_accept, &not_accepted, 1, 0);
         }
-    }
-    netd_accept = false;
-}
-
-void netd_server_clients(int* sock_list, th_queue<net_msg>* queue, volatile bool* run) {
-    netd_clients = true;
-    while (*run == true) {
         for (unsigned int i = 0; i < clients_max; i++) {
             if (sock_list[i] < 0) continue;
 
-            char msg_raw[8192];
             size_t got_bytes = recv(sock_list[i], &msg_raw, sizeof(msg_raw), 0);
             if (got_bytes < 1) continue;
 
@@ -100,7 +93,7 @@ void netd_server_clients(int* sock_list, th_queue<net_msg>* queue, volatile bool
             queue->add(ret);
         }
     }
-    netd_clients = false;
+    netd_started = false;
 }
 
 void master_start() {
@@ -115,11 +108,9 @@ void master_start() {
     volatile bool threads_run = true;
 
     if (listen(sock, 1) == -1) std::cerr << "Listen fail: " << strerror(errno) << "(" << errno << ")" << std::endl;
-    std::thread accepter(netd_server_accept, &sock, clients_list, &threads_run);
-    std::thread listener(netd_server_clients, clients_list, &queue, &threads_run);
+    std::thread netd(netd_server, &sock, clients_list, &queue, &threads_run);
 
-    while (!netd_accept) continue;
-    while (!netd_clients) continue;
+    while (!netd_started) continue;
 
     std::cout << "Ready." << std::endl;
     while (true) {
@@ -148,10 +139,8 @@ void master_start() {
         }
     }
     threads_run = false;
-    while (netd_accept) continue;
-    while (netd_clients) continue;
-    accepter.join();
-    listener.join();
+    while (netd_started) continue;
+    netd.join();
 }
 
 void client_start() {
