@@ -11,6 +11,6 @@ struct thread_task {
 };
 
 // Начало работы в одиночном режиме
-void solo_start();
+void solo_start(int* socket);
 
 #endif /* __SOLO_H__ */

@@ -3,7 +3,9 @@
 
 #include "net_def.h"
 
-void client_start();
-void master_start();
+int setup_socket();
+void close_socket(int socket);
+
+void master_start(int* sokcet);
 
 #endif /* __NET_H__ */

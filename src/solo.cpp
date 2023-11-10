@@ -43,7 +43,7 @@ bool check_matr(volatile char** mat, size_t* ind) {
     return ret;
 }
 
-void solo_start() {
+void solo_start([[maybe_unused]] int* socket) {
     try {
         auto p = select_parser();
 		auto s = select_saver();

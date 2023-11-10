@@ -116,16 +116,23 @@ int main(int argc, char** argv) {
     threads_count_setup();
     std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
-    // Определяем режим работы
     if (verticies_file.empty() && !master_addr) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
         return 1;
     }
 
-    if (master_addr) client_start();
-    else {
-        if (master_mode) master_start();
-        else solo_start();
+    // Определяем режим работы
+    try {
+        int sock = setup_socket();
+
+        if (master_mode) master_start(&sock); // Ражим мастера
+        else if (master_addr) solo_start(&sock); // Режим клиента
+        else solo_start(nullptr); // Одиночный режим
+
+        close_socket(sock);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "err: " << e.what() << std::endl;
     }
 
     return 0;
