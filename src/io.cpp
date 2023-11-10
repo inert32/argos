@@ -79,23 +79,6 @@ bool reader_argos::have_triangles() const {
 	return triangles_current < vectors_start;
 }
 
-reader_base* select_parser() {
-	std::ifstream file(verticies_file, std::ios::binary);
-	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
-
-	// Проверяем заголовки
-	std::string header;
-	std::getline(file, header);
-	file.close();
-
-	if (header[0] == 'V' && header[1] == ':') {
-		auto ret = new reader_argos();
-		return ret;
-	}
-	else // Неизвестный формат 
-		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
-}
-
 saver_file::saver_file() : saver_base() {
 	file.open(output_file.string() + ".tmp", std::ios::app | std::ios::ate | std::ios::binary);
 	if (!file.good()) throw std::runtime_error("saver: Failed to open file " + output_file.string() + ".tmp");
@@ -151,9 +134,4 @@ void saver_file::save_final() {
 	base.close();
 	out.close();
 	std::filesystem::remove(base_path);
-}
-
-saver_base* select_saver() {
-	auto ret = new saver_file;
-	return ret;
 }

@@ -48,13 +48,17 @@ bool check_matr(volatile char** mat, size_t* ind) {
     return ret;
 }
 
-void solo_start([[maybe_unused]] socket_t* socket) {
+void solo_start(socket_t* socket) {
     try {
-        auto p = select_parser();
-		auto s = select_saver();
+        if (socket != nullptr) std::cout << "Client mode" << std::endl;
+        else std::cout << "Solo mode" << std::endl;
+
+        auto p = select_parser(socket);
+		auto s = select_saver(socket);
 
         // Загружаем векторы
         p->get_vectors();
+        std::cout << "Loaded " << vectors.size() << " vectors" << std::endl;
 
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();

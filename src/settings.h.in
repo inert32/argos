@@ -29,9 +29,6 @@ extern unsigned int chunk_elements;
 // Количество потоков для расчета
 extern unsigned int threads_count;
 
-// Максимальное число клиентов для подключения
-extern unsigned int clients_max;
-
 // Сервер будет слушать этот порт
 extern unsigned int port_server;
 

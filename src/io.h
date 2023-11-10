@@ -43,9 +43,6 @@ private:
 	std::streampos triangles_current;
 };
 
-// Выбор парсера в зависимости от режима работы и типа файла
-reader_base* select_parser();
-
 // Интерфейс для сохранения результатов
 class saver_base {
 public:
@@ -78,7 +75,12 @@ public:
 	void save_final() {}
 };
 
+class socket_t;
+
+// Выбор парсера в зависимости от режима работы и типа файла
+reader_base* select_parser(socket_t* s);
+
 // Выбор класса saver в зависимости от режима работы
-saver_base* select_saver();
+saver_base* select_saver(socket_t* s);
 
 #endif /* __IO_H__ */

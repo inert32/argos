@@ -30,7 +30,6 @@ int show_help() {
     std::cout << "     --chunk <COUNT>   - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
     std::cout << "     --threads <COUNT> - count of threads for calculation (default " << threads_count << ")" << std::endl;
     std::cout << "     --port <PORT>     - set server port (default " << port_server << ")" << std::endl;
-    std::cout << "     --clients <NUM>   - set maximum clients count (default " << clients_max << ")" << std::endl;
     std::cout << "     --help            - this help" << std::endl;
     return 0;
 }
@@ -94,16 +93,6 @@ bool parse_cli(int argc, char** argv) {
                 }
             }
         }
-        if (buf == "--clients") {
-            if (i + 1 < argc) {
-                try {
-                    clients_max = std::stoi(argv[++i]);
-                }
-                catch (const std::exception&) {
-                    clients_max = 10;
-                }
-            }
-        }
     }
     return true;
 }
@@ -116,9 +105,6 @@ int main(int argc, char** argv) {
     if (!verticies_file.empty()) verticies_file = std::filesystem::absolute(verticies_file);
     if (!output_file.empty()) output_file = std::filesystem::absolute(output_file);
 
-    threads_count_setup();
-    std::cout << "Using " << threads_count << " worker threads." << std::endl;
-
     if (verticies_file.empty() && !master_addr) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
         return 1;
@@ -128,13 +114,41 @@ int main(int argc, char** argv) {
     try {
         socket_t sock;
 
-        if (master_mode) master_start(&sock); // Ражим мастера
-        else if (master_addr) solo_start(&sock); // Режим клиента
-        else solo_start(nullptr); // Одиночный режим
+        if (master_mode) master_start(&sock); // Режим мастера
+        else {
+            threads_count_setup();
+            std::cout << "Using " << threads_count << " worker threads." << std::endl;
+
+            if (master_addr) solo_start(&sock); // Режим клиента
+            else solo_start(nullptr); // Одиночный режим
+        }
     }
     catch (const std::exception& e) {
         std::cerr << "err: " << e.what() << std::endl;
     }
 
     return 0;
+}
+
+reader_base* select_parser(socket_t* s) {
+    if (s != nullptr) return new reader_network(s);
+
+	std::ifstream file(verticies_file, std::ios::binary);
+	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
+
+	// Проверяем заголовки
+	std::string header;
+	std::getline(file, header);
+	file.close();
+
+	if (header[0] == 'V' && header[1] == ':')
+		return new reader_argos();
+	else // Неизвестный формат
+		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
+}
+
+saver_base* select_saver(socket_t* s) {
+    if (s != nullptr) return new saver_network(s);
+
+	return new saver_file();
 }
