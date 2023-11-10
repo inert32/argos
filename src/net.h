@@ -2,10 +2,9 @@
 #define __NET_H__
 
 #include "net_def.h"
+#include "net_int.h"
+#include "io.h"
 
-int setup_socket();
-void close_socket(int socket);
-
-void master_start(int* sokcet);
+void master_start(socket_t* socket);
 
 #endif /* __NET_H__ */

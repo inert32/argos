@@ -8,11 +8,16 @@
 #include "settings.h"
 #include "th_queue.h"
 #include "base.h"
-#include "solo.h"
 #include "io.h"
+#include "net.h"
 
 // Флаг остановки потоков
 volatile bool stop = false;
+
+struct thread_task {
+    vec3 vec; // Вектор для обработки
+    volatile char* ans = nullptr; // Строка в матрице ответов
+};
 
 // Вычисления в отдельном потоке
 void worker_main(th_queue<thread_task>* src) {
@@ -43,7 +48,7 @@ bool check_matr(volatile char** mat, size_t* ind) {
     return ret;
 }
 
-void solo_start([[maybe_unused]] int* socket) {
+void solo_start([[maybe_unused]] socket_t* socket) {
     try {
         auto p = select_parser();
 		auto s = select_saver();
@@ -74,6 +79,9 @@ void solo_start([[maybe_unused]] int* socket) {
 		    }
             if (count == 0) break;
 
+            // Помечаем матрицу как непроверенную перед вычислением новых треугольников
+            // До 0f4eb59d77c8a4a2d1a3efc87a03d9307a0b2260 матрица пересоздавалась 
+            // каждую итерацию цикла, теперь метку о заполнении строки нужно ставить вручную.
             for (size_t i = 0; i < vec_count; i++) {
 	    		ans_matr[i] = new volatile char[count];
 		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = 2;
@@ -105,12 +113,6 @@ void solo_start([[maybe_unused]] int* socket) {
 
             // Сохраняем
             s->save_tmp(ans_matr, count);
-
-            // Помечаем матрицу как непроверенную перед загрузкой новых треугольников
-            // До 0f4eb59d77c8a4a2d1a3efc87a03d9307a0b2260 матрица пересоздавалась 
-            // каждую итерацию цикла, теперь метку о заполнении строки нужно ставить вручную.
-            for (size_t i = 0; i < vec_count; i++)
-                ans_matr[i][count - 1] = 2;
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();

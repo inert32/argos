@@ -18,6 +18,9 @@ bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
 
+// Начало работы в одиночном режиме
+void solo_start(socket_t* socket);
+
 int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
     std::cout << "     --file <PATH>     - use verticies file" << std::endl;
@@ -123,13 +126,11 @@ int main(int argc, char** argv) {
 
     // Определяем режим работы
     try {
-        int sock = setup_socket();
+        socket_t sock;
 
         if (master_mode) master_start(&sock); // Ражим мастера
         else if (master_addr) solo_start(&sock); // Режим клиента
         else solo_start(nullptr); // Одиночный режим
-
-        close_socket(sock);
     }
     catch (const std::exception& e) {
         std::cerr << "err: " << e.what() << std::endl;
