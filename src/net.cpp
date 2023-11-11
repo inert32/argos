@@ -68,7 +68,7 @@ char* vec3_to_char(const vec3& v) {
 unsigned int port_server = 3700;
 
 reader_network::reader_network(socket_t* s) : reader_base() {
-    std::cout << "reader_network: start" << std::endl;
+    std::cout << "Connected to: " << master_addr << std::endl;
     conn = s;
 }
 
@@ -83,9 +83,8 @@ reader_network::~reader_network() {
 bool reader_network::get_next_triangle(triangle* ret) {
     std::cout << "reader_network: request triangle" << std::endl;
     if (!server_have_triangles) return false;
-    net_msg req, ans;
-    req.type = msg_types::CLIENT_GET_TRIANGLE;
-    conn->send_msg(req);
+    net_msg ans;
+    conn->send_msg(msg_types::CLIENT_GET_TRIANGLE);
 
     bool ok = conn->get_msg(&ans);
     std::cout << "Server reply: " << (int)ans.type << ", need " << (int)msg_types::SERVER_DATA << std::endl;
@@ -110,11 +109,14 @@ bool reader_network::get_next_triangle(triangle* ret) {
 
 void reader_network::get_vectors() {
     std::cout << "reader_network: request vectors" << std::endl;
-    net_msg req, ans;
-    req.type = msg_types::CLIENT_GET_VECTORS;
-    conn->send_msg(req);
+    net_msg ans;
+    conn->send_msg(msg_types::CLIENT_GET_VECTORS);
 
-    conn->get_msg(&ans);
+    bool ok = conn->get_msg(&ans);
+    std::cout << "Server reply: " << (int)ans.type << ", need " << (int)msg_types::SERVER_DATA << std::endl;
+    if (!ok || ans.type != msg_types::SERVER_DATA) {
+        return;
+    }
     vectors.clear();
 
     size_t offset = 0, i = 0;
@@ -197,63 +199,76 @@ void master_start(socket_t* socket) {
     }
 
     // Открываем поток приема сообщений
-    std::vector<socket_t> clients_list;
+    for (size_t i = 0; i < clients_max; i++) clients_list[i] = nullptr;
+
     th_queue<net_msg> queue;
     volatile bool threads_run = true;
 
-    std::thread netd(netd_server, socket, &clients_list, &queue, &threads_run);
+    //netd_server(socket, clients_list, &queue, &threads_run);
+
+    std::thread netd(netd_server, socket, &queue, &threads_run);
     while (!netd_started) continue;
 
     bool wait_for_clients = true;
     std::cout << "Ready." << std::endl;
-    while (wait_for_clients || clients_list.size() > 0) {
+    while (wait_for_clients) {
         auto x = queue.take();
         if (!x) continue;
         auto msg = *x;
-        auto send_to = clients_list[msg.peer_id];
+        auto send_to = *clients_list[msg.peer_id];
         std::cout << "Type: " << (int)msg.type << std::endl;
         std::cout << "Len: " << msg.len << std::endl;
+        bool ok;
         switch (msg.type) {
             case msg_types::CLIENT_GET_VECTORS: {
+                std::cout << "request vectors" << std::endl;
                 net_msg ans;
                 ans.type = msg_types::SERVER_DATA;
                 ans.data = vectors_array;
                 ans.len = vectors_array_size;
                 send_to.send_msg(ans);
+
+                ok = send_to.send_msg(ans);
+                if (ok) std::cout << "send ok" << std::endl;
+                else std::cout << "send fail" << std::endl;
                 break;
             }
             case msg_types::CLIENT_GET_TRIANGLE: {
+                std::cout << "request triangle" << std::endl;
                 triangle ret;
-                bool ok = parser->get_next_triangle(&ret);
+                ok = parser->get_next_triangle(&ret);
                 if (!ok) {
-                    auto a = (char)msg_types::SERVER_DONE;
-                    send_to.send_msg(&a, 1);
+                    send_to.send_msg(msg_types::SERVER_DATA);
                     break;
                 }
                 net_msg ans;
                 ans.type = msg_types::SERVER_DATA;
                 ans.len = sizeof(triangle);
 
-                ans.data = new char[sizeof(triangle)];
+                /*ans.data = new char[sizeof(triangle)];
                 auto triangle_raw = triangle_to_char(ret);
                 std::memcpy(ans.data, triangle_raw, sizeof(triangle));
-                delete[] triangle_raw;
+                delete[] triangle_raw;*/
+                ans.data = triangle_to_char(ret);
 
-                send_to.send_msg(ans);
+                ok = send_to.send_msg(ans);
+                if (ok) std::cout << "send ok" << std::endl;
+                else std::cout << "send fail" << std::endl;
                 break;
             }
             case msg_types::CLIENT_DATA: {
+                std::cout << "request save" << std::endl;
                 tmpfile << msg.data << std::endl;
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {
-                clients_list.erase(clients_list.begin() + msg.peer_id);
-                wait_for_clients = false;
+                std::cout << "client disconnect" << std::endl;
+                clients_list[msg.peer_id]->~socket_t();
+                clients_list[msg.peer_id] = nullptr;
                 break;
             }
             default: {
-                auto a = (char)msg_types::BOTH_UNKNOWN;
-                send_to.send_msg(&a, 1);
+                send_to.send_msg(msg_types::BOTH_UNKNOWN);
                 break;
             }
         }

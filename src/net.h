@@ -5,12 +5,6 @@
 #include "net_int.h"
 #include "io.h"
 
-template <class T>
-union conv_t {
-    char side1[sizeof(T)];
-    T side2;
-};
-
 class reader_network : public reader_base {
 public:
     reader_network(socket_t* s);
