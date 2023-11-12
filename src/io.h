@@ -8,7 +8,7 @@
 #include <fstream>
 #include <filesystem>
 #include "base.h"
-#include "network/net_base.h"
+#include "net_def.h"
 
 // Чтение файла вершин для работы с ними
 
@@ -20,13 +20,11 @@ public:
 
 	// Получение треугольника из файла
 	virtual bool get_next_triangle(triangle* ret) = 0;
-	// Получение вектора из файла
-	virtual bool get_next_vector(vec3* ret) = 0;
+	// Получение векторов из файла
+	virtual void get_vectors() = 0;
 
 	// Проверка наличия треугольников в файле
 	virtual bool have_triangles() const = 0;
-	// Проверка наличия векторов в файле
-	virtual bool have_vectors() const = 0;
 };
 
 // Собственный формат файла вершин
@@ -36,15 +34,14 @@ public:
 
 	// Получение треугольника из файла
 	bool get_next_triangle(triangle* ret);
-	// Получение вектора из файла
-	bool get_next_vector(vec3* ret);
+	// Получение векторов из файла
+	void get_vectors();
 
 	bool have_triangles() const;
-	bool have_vectors() const;
 private:
 	std::ifstream file;
 	std::streampos triangles_start, vectors_start;
-	std::streampos triangles_current, vectors_current;
+	std::streampos triangles_current;
 };
 
 // Интерфейс для сохранения результатов
@@ -79,10 +76,10 @@ public:
 	void save_final() {}
 };
 
-// Выбор класса saver в зависимости от режима работы
-saver_base* select_saver(socket_int* socket);
-
 // Выбор парсера в зависимости от режима работы и типа файла
-reader_base* select_parser(socket_int* socket);
+reader_base* select_parser(socket_int_t* s);
+
+// Выбор класса saver в зависимости от режима работы
+saver_base* select_saver(socket_int_t* s);
 
 #endif /* __IO_H__ */

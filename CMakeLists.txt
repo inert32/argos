@@ -8,12 +8,12 @@ project(argos_proj VERSION "0.2.0")
 configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
-src/main.cpp src/base.cpp src/solo.cpp src/convert.cpp
-src/io.cpp src/net.cpp src/network/net_linux.cpp src/network/clients.cpp
+src/main.cpp src/base.cpp src/solo.cpp
+src/io.cpp src/net.cpp src/net_int.cpp
 
-src/settings.h src/base.h src/point.h src/convert.h src/th_queue.h
-src/io.h src/net.h src/network/net_base.h src/network/net_internal.h
-src/network/clients.h)
+src/settings.h src/base.h src/solo.h
+src/point.h src/th_queue.h src/io.h
+src/net.h src/net_def.h src/net_int.h)
 
 target_compile_features(argos PUBLIC cxx_std_17)
 
@@ -30,7 +30,7 @@ if (ARGOS_PVS)
                           OUTPUT 
                           FORMAT tasklist
                           ANALYZE argos
-                          MODE GA:1,2,3;OP:1,2
+                          MODE GA:1,2,3;OP:1,2,3
                           LOG ../PVS_LOG )
 endif()
 # Add compiler-dependeded options

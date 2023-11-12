@@ -12,7 +12,7 @@
 template<class T>
 class th_queue {
 public:
-    th_queue() {}
+    th_queue() = default;
     th_queue(const th_queue& other) {
         std::lock_guard<std::mutex> lock(other.m);
         storage = other.storage;

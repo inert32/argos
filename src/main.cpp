@@ -8,28 +8,52 @@
 
 #include "settings.h"
 #include "base.h"
+#include "solo.h"
 #include "net.h"
 
 std::filesystem::path verticies_file;
 std::filesystem::path output_file = "output.list";
+ipv4_t master_addr;
 bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
-ipv4_t master_addr;
-size_t conn_port_master = 6750;
-size_t conn_port_client = 6700;
 
-void solo_start(socket_int* socket);
+// Начало работы в одиночном режиме
+void solo_start(socket_int_t* socket);
+
+reader_base* select_parser(socket_int_t* s) {
+    if (s != nullptr) return new reader_network(*s);
+
+	std::ifstream file(verticies_file, std::ios::binary);
+	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
+
+	// Проверяем заголовки
+	std::string header;
+	std::getline(file, header);
+	file.close();
+
+	if (header[0] == 'V' && header[1] == ':')
+		return new reader_argos();
+	else // Неизвестный формат
+		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
+}
+
+saver_base* select_saver(socket_int_t* s) {
+    if (s != nullptr) return new saver_network(*s);
+
+	return new saver_file();
+}
 
 int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
-    std::cout << "     --file <PATH>          - use verticies file" << std::endl;
-    std::cout << "(N/A)--connect <ADDR:port>  - connect to master server (IPv4 only)" << std::endl;
-    std::cout << "(N/A)--master               - be master node" << std::endl;
-    std::cout << "     --output <PATH>        - path to the output file (default " << output_file << ")" << std::endl;
-    std::cout << "     --chunk <COUNT>        - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
-    std::cout << "     --threads <COUNT>      - count of threads for calculation (default " << threads_count << ")" << std::endl;
-    std::cout << "     --help                 - this help" << std::endl;
+    std::cout << "     --file <PATH>     - use verticies file" << std::endl;
+    std::cout << "     --connect <ADDR>  - connect to master server (IPv4 only)" << std::endl;
+    std::cout << "     --master          - be master node" << std::endl;
+    std::cout << "     --output <PATH>   - path to the output file (default " << output_file << ")" << std::endl;
+    std::cout << "     --chunk <COUNT>   - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
+    std::cout << "     --threads <COUNT> - count of threads for calculation (default " << threads_count << ")" << std::endl;
+    std::cout << "     --port <PORT>     - set server port (default " << port_server << ")" << std::endl;
+    std::cout << "     --help            - this help" << std::endl;
     return 0;
 }
 
@@ -43,6 +67,7 @@ void threads_count_setup() {
     }
 }
 
+// Установка параметров командной строки
 bool parse_cli(int argc, char** argv) {
     if (argc == 1 || std::string(argv[1]) == "--help") return false;
     for (int i = 1; i < argc; i++) {
@@ -81,6 +106,16 @@ bool parse_cli(int argc, char** argv) {
         }
         if (buf == "--master") master_mode = true;
         if (buf == "--connect") if (i + 1 < argc) master_addr.from_string(argv[++i]);
+        if (buf == "--port") {
+            if (i + 1 < argc) {
+                try {
+                    port_server = std::stoi(argv[++i]);
+                }
+                catch (const std::exception&) {
+                    port_server = 3700;
+                }
+            }
+        }
     }
     return true;
 }
@@ -93,51 +128,29 @@ int main(int argc, char** argv) {
     if (!verticies_file.empty()) verticies_file = std::filesystem::absolute(verticies_file);
     if (!output_file.empty()) output_file = std::filesystem::absolute(output_file);
 
-    threads_count_setup();
-    std::cout << "Using " << threads_count << " worker threads." << std::endl;
-
-    if (!master_addr.is_set() && verticies_file.empty()) {
+    if (verticies_file.empty() && !master_addr) {
         std::cerr << "err: main: no verticies file and no master server address provided." << std::endl;
         return 1;
     }
 
     // Определяем режим работы
-    if (master_mode) { // Режим мастера
-        auto socket = new socket_int(conn_port_master);
-        master_start(socket);
-        delete socket;
-    }
-    else {
-        if (master_addr.is_set()) { // Режим клиента
-            auto socket = new socket_int(conn_port_client);
-            solo_start(socket);
-            delete socket;
+    try {
+        socket_int_t sock = socket_setup();
+
+        if (master_mode) master_start(sock); // Режим мастера
+        else {
+            threads_count_setup();
+            std::cout << "Using " << threads_count << " worker threads." << std::endl;
+
+            if (master_addr) solo_start(&sock); // Режим клиента
+            else solo_start(nullptr); // Одиночный режим
         }
-        else solo_start(nullptr); // Одиночный режим
+        if (master_addr) socket_send_msg(sock, msg_types::CLIENT_DISCONNECT);
+        socket_close(sock);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "err: " << e.what() << std::endl;
     }
 
     return 0;
-}
-
-reader_base* select_parser(socket_int* socket) {
-	if (socket != nullptr) return new reader_network(socket);
-
-	std::ifstream file(verticies_file, std::ios::binary);
-	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
-
-	// Проверяем заголовки
-	std::string header;
-	std::getline(file, header);
-	file.close();
-
-	if (header[0] == 'V' && header[1] == ':') // Старый формат
-		return new reader_argos();
-	else // Неизвестный формат 
-		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
-}
-
-saver_base* select_saver(socket_int* socket) {
-	if (socket != nullptr) return new saver_network(socket);
-
-	return new saver_file;
 }

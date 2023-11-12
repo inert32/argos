@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <fstream>
-
 #include "settings.h"
 #include "base.h"
 

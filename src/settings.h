@@ -9,7 +9,7 @@
 #include <filesystem>
 #include "net_def.h"
 
-constexpr char ARGOS_VERSION[] = "v@PROJECT_VERSION@";
+constexpr char ARGOS_VERSION[] = "v0.1.4";
 
 // Путь до исходного файла заданий
 extern std::filesystem::path verticies_file;
