@@ -1,14 +1,19 @@
 #ifndef __NET_H__
 #define __NET_H__
 
+/*
+	Платформо-независимые функции работы с сетью
+*/
+
 #include "net_def.h"
 #include "net_int.h"
 #include "io.h"
 
+// Класс загрузки файла вершин по сети
 class reader_network : public reader_base {
 public:
     reader_network(const socket_int_t s);
-	~reader_network();
+	~reader_network() = default;
 
 	bool get_next_triangle(triangle* ret);
 	void get_vectors();
@@ -19,6 +24,7 @@ private:
     bool server_have_triangles = true;
 };
 
+// Класс передачи результатов серверу
 class saver_network : public saver_base {
 public:
     saver_network(const socket_int_t s);

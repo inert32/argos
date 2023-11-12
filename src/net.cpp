@@ -9,6 +9,10 @@
 #include "th_queue.h"
 #include "net.h"
 
+unsigned int port_server = 3700;
+
+// Функции конвертации
+
 point char_to_point(const char* src) {
     float parts[3];
     conv_t<float> conv;
@@ -65,14 +69,10 @@ char* vec3_to_char(const vec3& v) {
     return ret;
 }
 
-unsigned int port_server = 3700;
-
 reader_network::reader_network(socket_int_t s) : reader_base() {
     std::cout << "Connected to: " << master_addr << std::endl;
     conn = s;
 }
-
-reader_network::~reader_network() {}
 
 bool reader_network::get_next_triangle(triangle* ret) {
     if (!server_have_triangles) return false;
@@ -84,7 +84,7 @@ bool reader_network::get_next_triangle(triangle* ret) {
         server_have_triangles = false;
         return false;
     }
-    if (ans.len < sizeof(triangle)) return false;
+    if (ans.len < sizeof(triangle)) return false; // Данные неполны
 
     // Переводим массив char в triangle
     size_t offset = 0;
@@ -104,7 +104,7 @@ void reader_network::get_vectors() {
     socket_send_msg(conn, msg_types::CLIENT_GET_VECTORS);
 
     bool ok = socket_get_msg(conn, &ans);
-    if (!ok || ans.type != msg_types::SERVER_DATA) return;
+    if (!ok || ans.type != msg_types::SERVER_DATA) return; // Получен большой массив векторов
     vectors.clear();
 
     size_t offset = 0;
@@ -116,6 +116,7 @@ void reader_network::get_vectors() {
 
         vectors.push_back({from, to});
     }
+    delete[] ans.data;
 }
 
 bool reader_network::have_triangles() const {
@@ -194,12 +195,13 @@ void master_start(socket_int_t socket) {
     while (!netd_started) continue;
 
     std::cout << "Ready." << std::endl;
-    while (run_server()) {
+    while (run_server()) { // Обработка сообщений
         auto x = queue.take();
         if (!x) continue;
         auto msg = *x;
         if (clients[msg.peer_id] == nullptr) continue;
         auto send_to = *clients[msg.peer_id];
+
         switch (msg.type) {
             case msg_types::CLIENT_GET_VECTORS: {
                 net_msg ans;

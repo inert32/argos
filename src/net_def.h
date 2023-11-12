@@ -1,6 +1,10 @@
 #ifndef __NET_DEF_H__
 #define __NET_DEF_H__
 
+/*
+    Основные типы данных для работы с сетью
+*/
+
 #include <ostream>
 #include <cstring>
 

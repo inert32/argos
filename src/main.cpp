@@ -8,7 +8,6 @@
 
 #include "settings.h"
 #include "base.h"
-#include "solo.h"
 #include "net.h"
 
 std::filesystem::path verticies_file;
@@ -135,18 +134,23 @@ int main(int argc, char** argv) {
 
     // Определяем режим работы
     try {
-        socket_int_t sock = socket_setup();
-
-        if (master_mode) master_start(sock); // Режим мастера
+        if (master_mode) { // Режим мастер-сервера
+            socket_int_t sock = socket_setup();
+            master_start(sock);
+            socket_close(sock);
+        }
         else {
             threads_count_setup();
             std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
-            if (master_addr) solo_start(&sock); // Режим клиента
+            if (master_addr) { // Режим клиента
+                socket_int_t sock = socket_setup();
+                solo_start(&sock);
+                socket_send_msg(sock, msg_types::CLIENT_DISCONNECT);
+                socket_close(sock);
+            }
             else solo_start(nullptr); // Одиночный режим
         }
-        if (master_addr) socket_send_msg(sock, msg_types::CLIENT_DISCONNECT);
-        socket_close(sock);
     }
     catch (const std::exception& e) {
         std::cerr << "err: " << e.what() << std::endl;
