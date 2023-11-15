@@ -13,62 +13,6 @@ unsigned int port_server = 3700;
 
 // Функции конвертации
 
-point char_to_point(const char* src) {
-    float parts[3];
-    conv_t<float> conv;
-    size_t offset = 0;
-
-    for (int i = 0; i < 3; i++) {
-        std::memcpy(conv.side1, &src[offset], sizeof(float));
-        offset+=sizeof(float);
-        parts[i] = conv.side2;
-    }
-    return { parts[0], parts[1], parts[2] };
-}
-
-char* point_to_char(const point& p) {
-    char* ret = new char[sizeof(point)];
-    conv_t<float> conv;
-    size_t offset = 0;
-
-    conv.side2 = p.x;
-    std::memcpy(&ret[offset], conv.side1, sizeof(float));
-    offset+=sizeof(float);
-
-    conv.side2 = p.y;
-    std::memcpy(&ret[offset], conv.side1, sizeof(float));
-    offset+=sizeof(float);
-
-    conv.side2 = p.z;
-    std::memcpy(&ret[offset], conv.side1, sizeof(float));
-
-    return ret;
-}
-
-char* triangle_to_char(const triangle& t) {
-    char* ret = new char[sizeof(triangle)];
-    size_t offset = 0;
-
-    std::memcpy(&ret[offset], point_to_char(t.A), sizeof(point));
-    offset+=sizeof(point);
-    std::memcpy(&ret[offset], point_to_char(t.B), sizeof(point));
-    offset+=sizeof(point);
-    std::memcpy(&ret[offset], point_to_char(t.C), sizeof(point));
-
-    return ret;
-}
-
-char* vec3_to_char(const vec3& v) {
-    char* ret = new char[sizeof(vec3)];
-    size_t offset = 0;
-
-    std::memcpy(&ret[offset], point_to_char(v.from), sizeof(point));
-    offset+=sizeof(point);
-    std::memcpy(&ret[offset], point_to_char(v.to), sizeof(point));
-
-    return ret;
-}
-
 reader_network::reader_network(socket_int_t s) : reader_base() {
     std::cout << "Connected to: " << master_addr << std::endl;
     conn = s;
@@ -88,13 +32,13 @@ bool reader_network::get_next_triangle(triangle* ret) {
 
     // Переводим массив char в triangle
     size_t offset = 0;
-    ret->A = char_to_point(&ans.data[offset]);
+    ret->A.from_char(&ans.data[offset]);
     offset+=sizeof(point);
 
-    ret->B = char_to_point(&ans.data[offset]);
+    ret->B.from_char(&ans.data[offset]);
     offset+=sizeof(point);
 
-    ret->C = char_to_point(&ans.data[offset]);
+    ret->C.from_char(&ans.data[offset]);
 
     return true;
 }
@@ -109,9 +53,9 @@ void reader_network::get_vectors() {
 
     size_t offset = 0;
     while (offset < ans.len) {
-        auto from = char_to_point(&ans.data[offset]);
+        point from(&ans.data[offset]);
         offset+=sizeof(point);
-        auto to = char_to_point(&ans.data[offset]);
+        point to(&ans.data[offset]);
         offset+=sizeof(point);
 
         vectors.push_back({from, to});
@@ -180,7 +124,7 @@ void master_start(socket_int_t socket) {
     char* vectors_array = new char[vectors_array_size];
     size_t offset = 0;
     for (auto& v : vectors) {
-        auto vec3_raw = vec3_to_char(v);
+        auto vec3_raw = v.to_char();
         std::memcpy(&vectors_array[offset], vec3_raw, sizeof(vec3));
         delete[] vec3_raw;
         offset+=sizeof(vec3);
@@ -222,7 +166,7 @@ void master_start(socket_int_t socket) {
                 net_msg ans;
                 ans.type = msg_types::SERVER_DATA;
                 ans.len = sizeof(triangle);
-                ans.data = triangle_to_char(ret);
+                ans.data = ret.to_char();
 
                 socket_send_msg(send_to, ans);
                 break;
