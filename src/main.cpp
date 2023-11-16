@@ -16,6 +16,7 @@ ipv4_t master_addr;
 bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
+bool keep_tmp = false;
 
 // Начало работы в одиночном режиме
 void solo_start(socket_int_t* socket);
@@ -47,11 +48,12 @@ int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
     std::cout << "     --file <PATH>     - use verticies file" << std::endl;
     std::cout << "     --connect <ADDR>  - connect to master server (IPv4 only)" << std::endl;
-    std::cout << "     --master          - be master node" << std::endl;
+    std::cout << "     --master          - be master node (default off)" << std::endl;
     std::cout << "     --output <PATH>   - path to the output file (default " << output_file << ")" << std::endl;
     std::cout << "     --chunk <COUNT>   - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
     std::cout << "     --threads <COUNT> - count of threads for calculation (default " << threads_count << ")" << std::endl;
     std::cout << "     --port <PORT>     - set server port (default " << port_server << ")" << std::endl;
+    std::cout << "     --keep-tmp        - keep temporary files (default off)";
     std::cout << "     --help            - this help" << std::endl;
     return 0;
 }
@@ -115,6 +117,7 @@ bool parse_cli(int argc, char** argv) {
                 }
             }
         }
+        if (buf == "--keep-tmp") keep_tmp = true;
     }
     return true;
 }

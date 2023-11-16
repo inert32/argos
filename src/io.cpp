@@ -134,6 +134,13 @@ saver_base::saver_base() {
 	if (!tmp_file.good()) throw std::runtime_error("saver: Failed to open file " + tmp_path + ".tmp");
 }
 
+saver_file::~saver_file() {
+	if (!keep_tmp) {
+		std::filesystem::remove(tmp_path);
+		std::filesystem::remove(final_path);
+	}
+}
+
 void saver_base::save_tmp(volatile char** mat, const unsigned int count) {
 	const size_t vec_count = vectors.size();
 	// Для каждого вектора указываем 
@@ -191,7 +198,6 @@ void saver_base::save_final() {
 	const double diff = (double)post_size / (double)pre_size * 100;
 
 	std::cout << "save_final: compressed bytes: " << pre_size << "->" << post_size << " (" << diff << "%)" << std::endl;
-	std::filesystem::remove(tmp_path);
 }
 
 void saver_file::convert_ids() {
@@ -235,5 +241,4 @@ void saver_file::convert_ids() {
 	}
 	out.close();
 	base.close();
-	std::filesystem::remove(final_path);
 }

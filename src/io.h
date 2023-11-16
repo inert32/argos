@@ -73,6 +73,7 @@ protected:
 class saver_file : public saver_base {
 public:
 	saver_file() : saver_base() {}
+	~saver_file();
 
 	void save_tmp(volatile char** mat, const unsigned int count);
 	void save_final();
