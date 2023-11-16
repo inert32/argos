@@ -28,7 +28,7 @@ bool reader_network::get_next_triangle(triangle* ret) {
         server_have_triangles = false;
         return false;
     }
-    if (ans.len < sizeof(triangle)) return false; // Данные неполны
+    if (ans.len < triangle::size) return false; // Данные неполны
 
     // Переводим массив char в triangle
     size_t offset = 0;
@@ -90,14 +90,14 @@ void master_start(socket_int_t socket) {
 
     // Загружаем вектора
     parser->get_vectors();
-    const auto vectors_array_size = vectors.size() * sizeof(vec3);
+    const auto vectors_array_size = vectors.size() * vec3::size;
     char* vectors_array = new char[vectors_array_size];
     size_t offset = 0;
     for (auto& v : vectors) {
         auto vec3_raw = v.to_char();
-        std::memcpy(&vectors_array[offset], vec3_raw, sizeof(vec3));
+        std::memcpy(&vectors_array[offset], vec3_raw, vec3::size);
         delete[] vec3_raw;
-        offset+=sizeof(vec3);
+        offset+=vec3::size;
     }
 
     // Открываем поток приема сообщений
@@ -137,7 +137,7 @@ void master_start(socket_int_t socket) {
                 ret.id = triangle_id++;
                 net_msg ans;
                 ans.type = msg_types::SERVER_DATA;
-                ans.len = sizeof(triangle);
+                ans.len = triangle::size;
                 ans.data = ret.to_char();
 
                 socket_send_msg(send_to, ans);

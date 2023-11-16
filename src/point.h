@@ -92,7 +92,7 @@ public:
 class vec3 {
 public:
     char* to_char() {
-        char* ret = new char[sizeof(vec3)];
+        char* ret = new char[size];
         size_t offset = 0;
 
         std::memcpy(&ret[offset], from.to_char(), sizeof(point));
@@ -107,12 +107,16 @@ public:
 
     size_t id = 0; // Порядковый номер в файле вершин
 	point from, to;
+
+    // id не передается по сети, но влияет на sizeof(), из-за чего
+    // отправлялся буфер неверного размера
+    static constexpr size_t size = 2 * sizeof(point);
 };
 
 class triangle {
 public:
     char* to_char() {
-        char* ret = new char[sizeof(triangle)];
+        char* ret = new char[size];
         size_t offset = 0;
 
         std::memcpy(&ret[offset], A.to_char(), sizeof(point));
@@ -129,6 +133,10 @@ public:
 
     size_t id = 0; // Порядковый номер в файле вершин
     point A, B, C;
+
+    // id не передается по сети, но влияет на sizeof(), из-за чего
+    // отправлялся буфер неверного размера
+    static constexpr size_t size = 3 * sizeof(point);
 };
 
 #endif /* __POINT_H__ */
