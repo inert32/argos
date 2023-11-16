@@ -16,6 +16,7 @@ public:
 	~reader_network() = default;
 
 	bool get_next_triangle(triangle* ret);
+	bool get_triangle(triangle* ret, const size_t id);
 	void get_vectors();
 
 	bool have_triangles() const;
@@ -28,14 +29,14 @@ private:
 class saver_network : public saver_base {
 public:
     saver_network(const socket_int_t s);
-	~saver_network();
+	~saver_network() = default;
 
 	void save_tmp(volatile char** mat, const unsigned int count);
-
 	void save_final();
+
+	void convert_ids();
 private:
     socket_int_t conn;
-    std::fstream file;
 };
 
 void master_start(socket_int_t socket);

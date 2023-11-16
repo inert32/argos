@@ -106,11 +106,13 @@ void solo_start(socket_int_t* socket) {
         for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, tasks);
 
         size_t chunks_count = 0;
+        size_t triangle_id = 0;
         while (p->have_triangles()) {
             // Загружаем треугольники
-            triangle load2; size_t count = 0;
-	    	while (count < chunk_elements && p->get_next_triangle(&load2)) {
-		    	triangles.push_back(load2);
+            triangle load; size_t count = 0;
+	    	while (count < chunk_elements && p->get_next_triangle(&load)) {
+                load.id = triangle_id++;
+		    	triangles.push_back(load);
 			    count++;
 		    }
             if (count == 0) break;
@@ -162,8 +164,9 @@ void solo_start(socket_int_t* socket) {
         delete[] ans_matr;
         // При количестве треугольников больше чем chunks_elements
         // вектора в выходном файле будут повторяться. Исправляем.
-		std::cout << "Compressing output..." << std::endl;
         s->save_final();
+        // Переводим идентификаторы векторов и треугольников в координаты
+        s->convert_ids();
     }
     catch (const std::runtime_error& e) {
 		std::cerr << "err: " << e.what() << std::endl;

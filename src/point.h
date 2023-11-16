@@ -45,13 +45,13 @@ public:
     }
 
     // Человекочитаемый вывод
-	friend std::ostream& operator<<(std::ostream& os, const point& p) {
-		os << "{ " << p.x << "; " << p.y << "; " << p.z << " }";
-		return os;
+    std::string to_string() const {
+        return "{ " + std::to_string(x) + " ; " + std::to_string(y) + " ; " + std::to_string(z) + " }";
 	}
+
     // Машинный вывод
-    void print_terse(std::ostream& os) const {
-		os << x << " " << y << " " << z;
+    std::string to_string_raw() const {
+        return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
 	}
 
     void from_char(const char* src) {
@@ -101,9 +101,12 @@ public:
 
         return ret;
     }
+    std::string to_string() {
+        return from.to_string_raw() + ">" + to.to_string_raw();
+    }
 
-	point from;
-	point to;
+    size_t id = 0; // Порядковый номер в файле вершин
+	point from, to;
 };
 
 class triangle {
@@ -120,10 +123,12 @@ public:
 
         return ret;
     }
+    std::string to_string() {
+        return A.to_string_raw() + " " + B.to_string_raw() + " " + C.to_string_raw();
+    }
 
-    point A;
-    point B;
-    point C;
+    size_t id = 0; // Порядковый номер в файле вершин
+    point A, B, C;
 };
 
 #endif /* __POINT_H__ */

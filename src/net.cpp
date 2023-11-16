@@ -43,6 +43,12 @@ bool reader_network::get_next_triangle(triangle* ret) {
     return true;
 }
 
+// Клиент не должен просить определенные треугольники, это необходимо
+// только на этапе saver_base::convert_ids()
+bool reader_network::get_triangle([[maybe_unused]] triangle* ret, [[maybe_unused]] const size_t id) {
+    return false;
+}
+
 void reader_network::get_vectors() {
     net_msg ans;
     socket_send_msg(conn, msg_types::CLIENT_GET_VECTORS);
@@ -52,13 +58,14 @@ void reader_network::get_vectors() {
     vectors.clear();
 
     size_t offset = 0;
+    size_t id = 0;
     while (offset < ans.len) {
         point from(&ans.data[offset]);
         offset+=sizeof(point);
         point to(&ans.data[offset]);
         offset+=sizeof(point);
 
-        vectors.push_back({from, to});
+        vectors.push_back({id++, from, to});
     }
     delete[] ans.data;
 }
@@ -69,47 +76,10 @@ bool reader_network::have_triangles() const {
 
 saver_network::saver_network(socket_int_t s) : saver_base() {
     conn = s;
-    file.open("output.tmp", std::ios::out | std::ios::app | std::ios::ate | std::ios::binary);
-    if (!file.good()) throw std::runtime_error("Failed to open output.tmp");
 }
 
-saver_network::~saver_network() {
-    file.close();
-}
-
-void saver_network::save_tmp(volatile char** mat, const unsigned int count) {
-    const size_t vec_count = vectors.size();
-	for (size_t vec = 0; vec < vec_count; vec++) {
-		auto curr_vec = vectors[vec];
-		curr_vec.from.print_terse(file); file << ">";
-		curr_vec.to.print_terse(file); file << ":";
-
-		for (size_t tr = 0; tr < count; tr++)
-			if (mat[vec][tr] == 1) {
-				auto t = triangles[tr];
-				t.A.print_terse(file); file << " ";
-				t.B.print_terse(file); file << " ";
-				t.C.print_terse(file); file << " ";
-			}
-		file << '\n';
-	}
-	file.flush();
-}
-
-void saver_network::save_final() {
-    // Загружаем output.tmp в память
-    std::vector<char> buf;
-    file.seekg(0);
-    while (!file.eof()) buf.push_back(file.get());
-
-    // Собираем сообщение
-    net_msg msg;
-    msg.type = msg_types::CLIENT_DATA;
-    msg.len = buf.size();
-    msg.data = new char[msg.len];
-    for (size_t i = 0; i < msg.len; i++) msg.data[i] = buf[i];
-
-    socket_send_msg(conn, msg);
+void saver_network::convert_ids() {
+    std::cerr << "convert_ids: not supported in master mode yet" << std::endl;
 }
 
 void master_start(socket_int_t socket) {
@@ -139,6 +109,7 @@ void master_start(socket_int_t socket) {
     while (!netd_started) continue;
 
     std::cout << "Ready." << std::endl;
+    size_t triangle_id = 0;
     while (run_server()) { // Обработка сообщений
         auto x = queue.take();
         if (!x) continue;
@@ -163,6 +134,7 @@ void master_start(socket_int_t socket) {
                     socket_send_msg(send_to, msg_types::SERVER_DATA);
                     break;
                 }
+                ret.id = triangle_id++;
                 net_msg ans;
                 ans.type = msg_types::SERVER_DATA;
                 ans.len = sizeof(triangle);
