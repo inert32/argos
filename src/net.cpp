@@ -78,8 +78,30 @@ saver_network::saver_network(socket_int_t s) : saver_base() {
     conn = s;
 }
 
-void saver_network::convert_ids() {
-    std::cerr << "convert_ids: not supported in master mode yet" << std::endl;
+void saver_network::save_tmp(volatile char** mat, const unsigned int count) {
+	const size_t vec_count = vectors.size();
+    std::string payload;
+	// Для каждого вектора указываем
+	for (size_t vec = 0; vec < vec_count; vec++) {
+		auto& curr_vec = vectors[vec];
+		payload += std::to_string(curr_vec.id) + ":";
+
+		for (size_t tr = 0; tr < count; tr++)
+			if (mat[vec][tr] == 1) {
+				auto& t = triangles[tr];
+                payload += std::to_string(t.id) + " ";
+			}
+		payload += '\n';
+	}
+
+    net_msg msg;
+    msg.type = msg_types::CLIENT_DATA;
+    msg.len = payload.length();
+    msg.data = new char[msg.len];
+    std::memcpy(msg.data, payload.c_str(), payload.length());
+
+    socket_send_msg(conn, msg);
+    delete[] msg.data;
 }
 
 void master_start(socket_int_t socket) {
@@ -144,8 +166,8 @@ void master_start(socket_int_t socket) {
                 break;
             }
             case msg_types::CLIENT_DATA: {
-                std::cout << "Client: local results saved" << std::endl;
-                tmpfile << msg.data << std::endl;
+                for (size_t i = 0; i < msg.len; i++) tmpfile << msg.data[i];
+                tmpfile.flush();
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {
@@ -168,4 +190,5 @@ void master_start(socket_int_t socket) {
     tmpfile.close();
     auto saver = select_saver(nullptr);
     saver->save_final();
+    saver->convert_ids();
 }

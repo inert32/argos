@@ -129,7 +129,9 @@ bool reader_argos::have_triangles() const {
 saver_base::saver_base() {
 	tmp_path = output_file.string() + ".tmp";
 	final_path = output_file.string() + ".tmp-final";
+}
 
+saver_file::saver_file() : saver_base() {
 	tmp_file.open(tmp_path, std::ios::app | std::ios::ate | std::ios::binary);
 	if (!tmp_file.good()) throw std::runtime_error("saver: Failed to open file " + tmp_path + ".tmp");
 }
@@ -141,7 +143,7 @@ saver_file::~saver_file() {
 	}
 }
 
-void saver_base::save_tmp(volatile char** mat, const unsigned int count) {
+void saver_file::save_tmp(volatile char** mat, const unsigned int count) {
 	const size_t vec_count = vectors.size();
 	// Для каждого вектора указываем 
 	for (size_t vec = 0; vec < vec_count; vec++) {
@@ -158,7 +160,7 @@ void saver_base::save_tmp(volatile char** mat, const unsigned int count) {
 	tmp_file.flush();
 }
 
-void saver_base::save_final() {
+void saver_file::save_final() {
 	std::cout << "Compressing output..." << std::endl;
 	std::ifstream base(tmp_path); // Выходной файл до сжатия
 	if (!base.good()) throw std::runtime_error("save_final: failed to open " + tmp_path);

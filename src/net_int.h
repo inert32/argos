@@ -38,6 +38,8 @@ constexpr size_t clients_max = 10;
 // Текущее число клиентов
 extern size_t clients_now;
 
+constexpr size_t net_chunk_size = 1024;
+
 // Флаг работы сервера
 // Ждет подключения хотя бы одного клиента, затем отключения всех клиентов
 bool run_server();

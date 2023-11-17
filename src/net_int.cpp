@@ -21,27 +21,15 @@ bool netd_started = false;
 size_t clients_now = 0;
 bool wait_for_clients = true;
 
-constexpr auto header_len = sizeof(msg_types) + sizeof(size_t);
+struct header_t {
+    size_t raw_len = sizeof(header_t);
+    msg_types type = msg_types::BOTH_UNKNOWN;
+};
 
 #define throw_err(msg) throw std::runtime_error(std::string(msg) + ": " + strerror(errno))
 
 bool run_server() {
     return wait_for_clients || clients_now > 0;
-}
-
-char* mk_header(const size_t len, const msg_types type) {
-    char* ret = new char[header_len];
-
-    conv_t<size_t> conv_len;
-    conv_len.side2 = len;
-
-    conv_t<msg_types> conv_type;
-    conv_type.side2 = type;
-
-    std::memcpy(ret, conv_len.side1, sizeof(size_t));
-    std::memcpy(&ret[sizeof(size_t)], conv_type.side1, sizeof(msg_types));
-
-    return ret;
 }
 
 socket_int_t socket_setup() {
@@ -83,51 +71,80 @@ bool socket_online(socket_int_t s) {
 }
 
 bool socket_get_msg(socket_int_t s, net_msg* ret) {
-    char header_raw[header_len] = "\0\0\0\0\0\0\0\0";
-    auto l = recv(s, header_raw, header_len, 0);
-    if (l < (signed)header_len) return false;
+    header_t head;
+    auto l = recv(s, &head, sizeof(header_t), 0);
+    if (l < (signed)sizeof(header_t)) return false;
 
-    conv_t<size_t> raw_size; conv_t<msg_types> raw_type;
-    for (size_t i = 0; i < sizeof(size_t); i++) raw_size.side1[i] = header_raw[i];
-    for (size_t i = 0; i < sizeof(msg_types); i++) raw_type.side1[i] = header_raw[i + sizeof(size_t)];
-
-    ret->type = raw_type.side2;
-    ret->len = raw_size.side2 - header_len;
+    ret->type = head.type;
+    ret->len = head.raw_len - sizeof(header_t);
 
     if (ret->len == 0) return true;
 
     // Копируем сообщение в ret
     ret->data = new char[ret->len];
-    l = recv(s, ret->data, ret->len, 0);
-    if (l < (signed)ret->len) std::cout << "get_msg: incomplete message got (" << l << " of " << ret->len << ")" << std::endl;
+    size_t bytes_got = 0;
+    while (bytes_got < ret->len) {
+        // Принимаем блоками по net_chunk_size байт
+        // Вычисляем размер следующего блока
+        const size_t bytes_remain = ret->len - bytes_got;
+        const size_t block_len = (bytes_remain > net_chunk_size) ? net_chunk_size : bytes_remain;
+
+        // Принимаем блок
+        auto got = recv(s, &ret->data[bytes_got], block_len, MSG_WAITALL); // MSG_WAITALL заблокирует поток пока мы получаем данные
+        if (got == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) bytes_got++; // строка 101 уменьшит bytes_got, компенсируем
+            else {
+                std::cout << "get_msg: " << strerror(errno) << " (" << errno << ")" << std::endl;
+                break;
+            }
+        }
+        bytes_got+=got;
+    }
+    if (bytes_got < ret->len)
+        std::cout << "get_msg: incomplete message got: " << bytes_got << " of " << ret->len << std::endl;
+
     return true;
 }
 
 bool socket_send_msg(socket_int_t s, const net_msg& msg) {
-    const auto raw_len = msg.len + header_len;
+    header_t head;
+    head.type = msg.type;
+    head.raw_len += msg.len;
+    const size_t raw_len = sizeof(header_t) + msg.len;
+
     char* msg_raw = new char[raw_len];
+    std::memcpy(msg_raw, &head, sizeof(header_t));
 
-    auto header = mk_header(raw_len, msg.type);
-    std::memcpy(msg_raw, header, header_len);
-    delete[] header;
+    std::memcpy(&msg_raw[sizeof(header_t)], msg.data, msg.len);
 
-    if (msg.len > 0) std::memcpy(&msg_raw[header_len], msg.data, msg.len);
+    size_t bytes_send = 0;
+    while (bytes_send < raw_len) {
+        // Отправляем блоками по net_chunk_size байт
+        // Вычисляем размер следующего блока
+        const size_t bytes_remain = raw_len - bytes_send;
+        const size_t block_len = (bytes_remain > net_chunk_size) ? net_chunk_size : bytes_remain;
 
-    auto send_bytes = send(s, msg_raw, raw_len, 0);
-    if (send_bytes < (signed)raw_len) std::cout << "send_msg: incomplete message send (" << send_bytes << " of " << raw_len << ")" << std::endl;
+        // Отправляем блок
+        auto sent = send(s, &msg_raw[bytes_send], block_len, 0);
+        if (sent == -1) break;
+        bytes_send+=sent;
+    }
+    if (bytes_send < raw_len)
+        std::cout << "send_msg: incomplete message sent: " << bytes_send << " of " << raw_len << std::endl;
 
     delete[] msg_raw;
-    return (send_bytes > 0);
+    return true;
 }
 
 bool socket_send_msg(socket_int_t s, const msg_types msg) {
-    auto header = mk_header(header_len, msg);
+    header_t head;
+    head.type = msg;
 
-    auto send_bytes = send(s, header, header_len, 0);
-    if (send_bytes < (signed)sizeof(msg_types)) std::cout << "send_msg: incomplete message send (" << send_bytes << " of " << sizeof(msg_types) << ")" << std::endl;
+    auto send_bytes = send(s, &head, sizeof(header_t), 0);
+    if (send_bytes < (signed)sizeof(header_t))
+        std::cout << "send_msg: incomplete message send (" << send_bytes << " of " << sizeof(msg_types) << ")" << std::endl;
 
-    delete[] header;
-    return (send_bytes > 0);
+    return true;
 }
 
 size_t find_slot(socket_int_t** clients) {

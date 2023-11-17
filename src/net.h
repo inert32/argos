@@ -32,9 +32,9 @@ public:
 	~saver_network() = default;
 
 	void save_tmp(volatile char** mat, const unsigned int count);
-	void save_final();
+	void save_final() {}
 
-	void convert_ids();
+	void convert_ids() {}
 private:
     socket_int_t conn;
 };

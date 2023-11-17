@@ -54,17 +54,15 @@ public:
 	~saver_base() = default;
 
 	// Сохранение чанка данных
-	void save_tmp(volatile char** mat, const unsigned int count);
+	virtual void save_tmp(volatile char** mat, const unsigned int count) = 0;
 
 	// Объединение временного файла в выходной файл
-	void save_final();
+	virtual void save_final() = 0;
 
 	// Перевод идентификаторов в треугольники и векторы
 	virtual void convert_ids() = 0;
 
 protected:
-    std::fstream tmp_file;
-
 	std::string tmp_path;
 	std::string final_path;
 };
@@ -72,13 +70,15 @@ protected:
 // Сохранение результатов в файл
 class saver_file : public saver_base {
 public:
-	saver_file() : saver_base() {}
+	saver_file();
 	~saver_file();
 
 	void save_tmp(volatile char** mat, const unsigned int count);
 	void save_final();
 
 	void convert_ids();
+private:
+	std::fstream tmp_file;
 };
 
 class saver_dummy : public saver_base {
