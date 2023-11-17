@@ -67,7 +67,7 @@ bool socket_online(socket_int_t s) {
     char c;
     auto l = recv(s, &c, sizeof(char), MSG_PEEK);
 
-    return (l == 0) ? true : false;
+    return (l > 0) ? true : false;
 }
 
 bool socket_get_msg(socket_int_t s, net_msg* ret) {
@@ -161,10 +161,7 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
         socket_int_t try_accept = accept(sock_in, nullptr, nullptr);
         if (try_accept > 0) {
             auto i = find_slot(clients);
-            if (i == clients_max) {
-                std::cout << "Declined client" << std::endl;
-                socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
-            }
+            if (i == clients_max) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
             else {
                 std::cout << "Accepted client" << std::endl;
                 clients[i] = new socket_int_t;
@@ -172,7 +169,6 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
                 fcntl(*clients[i], F_SETFL, O_NONBLOCK);
                 clients_now++;
                 wait_for_clients = false;
-                std::cout << "Clients count: " << clients_now << std::endl;
                 socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
             }
         }
@@ -183,7 +179,6 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
                 socket_close(*clients[i]);
                 clients[i] = nullptr;
                 clients_now--;
-                std::cout << "Clients count: " << clients_now << std::endl;
                 continue;
             }
 
