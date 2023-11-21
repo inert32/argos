@@ -21,16 +21,11 @@ bool netd_started = false;
 size_t clients_now = 0;
 bool wait_for_clients = true;
 
-struct header_t {
-    size_t raw_len = sizeof(header_t);
-    msg_types type = msg_types::BOTH_UNKNOWN;
-};
-
 #define throw_err(msg) throw std::runtime_error(std::string(msg) + ": " + strerror(errno))
 
-bool init_network() {}
+bool init_network() { return true; }
 
-bool shutdown_network() {}
+void shutdown_network() {}
 
 bool run_server() {
     return wait_for_clients || clients_now > 0;

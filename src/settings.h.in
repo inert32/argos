@@ -7,7 +7,7 @@
 */
 
 #include <filesystem>
-#include "net_def.h"
+#include "network/net_def.h"
 
 constexpr char ARGOS_VERSION[] = "v@PROJECT_VERSION@";
 

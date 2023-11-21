@@ -5,6 +5,13 @@
 
 #include <ostream>
 
+// Конвертер простых типов в массив байтов
+template <class T>
+union conv_t {
+    char side1[sizeof(T)];
+    T side2;
+};
+
 class point {
 public:
     point() = default;
@@ -56,7 +63,7 @@ public:
 
     void from_char(const char* src) {
         float parts[3];
-        union { char side1[sizeof(float)]; float side2; } conv;
+        conv_t<float> conv;
         size_t offset = 0;
 
         for (int i = 0; i < 3; i++) {
@@ -67,9 +74,9 @@ public:
         x = parts[0]; y = parts[1]; z = parts[2];
     }
 
-    char* to_char() {
+    char* to_char() const {
         char* ret = new char[sizeof(point)];
-        union { char side1[sizeof(float)]; float side2; } conv;
+        conv_t<float> conv;
         size_t offset = 0;
 
         conv.side2 = x;
@@ -91,7 +98,7 @@ public:
 
 class vec3 {
 public:
-    char* to_char() {
+    char* to_char() const {
         char* ret = new char[size];
         size_t offset = 0;
 
@@ -101,7 +108,7 @@ public:
 
         return ret;
     }
-    std::string to_string() {
+    std::string to_string() const {
         return from.to_string_raw() + ">" + to.to_string_raw();
     }
 

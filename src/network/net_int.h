@@ -8,11 +8,9 @@
 #include "net_def.h"
 #include "../th_queue.h"
 
-// Конвертер простых типов в массив байтов
-template <class T>
-union conv_t {
-    char side1[sizeof(T)];
-    T side2;
+struct header_t {
+    size_t raw_len = sizeof(header_t);
+    msg_types type = msg_types::BOTH_UNKNOWN;
 };
 
 // Функции работы с сокетами
@@ -43,6 +41,9 @@ constexpr size_t net_chunk_size = 1024;
 // Флаг работы сервера
 // Ждет подключения хотя бы одного клиента, затем отключения всех клиентов
 bool run_server();
+
+bool init_network();
+void shutdown_network();
 
 // Сетевой поток
 void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>* queue, volatile bool* run);

@@ -38,9 +38,8 @@ bool init_network() {
     return true;
 }
 
-bool shutdown_network() {
+void shutdown_network() {
     WSACleanup();
-    return true;
 }
 
 bool run_server() {
