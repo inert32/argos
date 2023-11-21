@@ -5,8 +5,8 @@
 	Платформо-независимые функции работы с сетью
 */
 
-#include "net_def.h"
-#include "net_int.h"
+#include "network/net_def.h"
+#include "network/net_int.h"
 #include "io.h"
 
 // Класс загрузки файла вершин по сети

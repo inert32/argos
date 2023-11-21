@@ -137,6 +137,7 @@ int main(int argc, char** argv) {
 
     // Определяем режим работы
     try {
+		init_network();
         if (master_mode) { // Режим мастер-сервера
             socket_int_t sock = socket_setup();
             master_start(sock);
@@ -154,9 +155,11 @@ int main(int argc, char** argv) {
             }
             else solo_start(nullptr); // Одиночный режим
         }
+		shutdown_network();
     }
     catch (const std::exception& e) {
         std::cerr << "err: " << e.what() << std::endl;
+		shutdown_network();
     }
 
     return 0;

@@ -9,7 +9,7 @@
 #include <filesystem>
 #include <set>
 #include "base.h"
-#include "net_def.h"
+#include "network/net_def.h"
 
 // Чтение файла вершин для работы с ними
 

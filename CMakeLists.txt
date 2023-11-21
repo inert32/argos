@@ -8,14 +8,18 @@ project(argos_proj VERSION "0.2.0")
 configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
-src/main.cpp src/solo.cpp
-src/io.cpp src/net.cpp src/net_int.cpp
+src/main.cpp src/solo.cpp src/io.cpp src/net.cpp
+src/network/net_linux.cpp src/network/net_win.cpp
 
 src/settings.h src/base.h
 src/point.h src/th_queue.h src/io.h
-src/net.h src/net_def.h src/net_int.h)
+src/net.h src/network/net_def.h src/network/net_int.h)
 
 target_compile_features(argos PUBLIC cxx_std_17)
+
+if(WIN32)
+    target_link_libraries(argos Ws2_32.lib)
+endif()
 
 option (ARGOS_PVS "Run static analyze wit PVS-Studio" OFF)
 if (ARGOS_PVS)
@@ -33,8 +37,8 @@ if (ARGOS_PVS)
                           MODE GA:1,2,3;OP:1,2,3
                           LOG ../PVS_LOG )
 endif()
-# Add compiler-dependeded options
 
+# Add compiler-dependeded options
 if(CMAKE_COMPILER_IS_GNUCC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
 endif()

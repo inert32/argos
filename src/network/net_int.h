@@ -6,7 +6,7 @@
 */
 
 #include "net_def.h"
-#include "th_queue.h"
+#include "../th_queue.h"
 
 // Конвертер простых типов в массив байтов
 template <class T>

@@ -66,8 +66,14 @@ struct net_msg {
     char* data = nullptr;
 };
 
+bool init_network();
+bool shutdown_network();
+
 #ifdef __linux__
 typedef int socket_int_t;
+#elif _WIN32
+#include <WinSock2.h>
+typedef SOCKET socket_int_t;
 #endif /*__linux__*/
 
 #endif /* __NET_DEF_H__ */

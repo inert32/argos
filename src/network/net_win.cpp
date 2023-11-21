@@ -1,19 +1,16 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 
+#ifdef _WIN32
+
 #include <stdexcept>
 #include <vector>
 #include <thread>
 #include <iostream>
 
-#ifdef __linux__
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <fcntl.h>
-#include "unistd.h"
-#endif /* __linux__ */
+#include <WinSock2.h>
 
-#include "settings.h"
+#include "../settings.h"
 #include "net_def.h"
 #include "net_int.h"
 
@@ -26,21 +23,40 @@ struct header_t {
     msg_types type = msg_types::BOTH_UNKNOWN;
 };
 
-#define throw_err(msg) throw std::runtime_error(std::string(msg) + ": " + strerror(errno))
+#define throw_err(msg) \
+	throw std::runtime_error(std::string(msg) + ": " + \
+	strerror(WSAGetLastError()) + " (" + \
+	std::to_string(WSAGetLastError()) + ")")
+
+bool init_network() {
+	WSADATA data;
+	auto start = WSAStartup(MAKEWORD(2, 2), &data);
+	if (start != 0) {
+		std::cerr << "WSA: WSAStartup: " << start << std::endl;
+		return false;
+	}
+	return true;
+}
+
+bool shutdown_network() {
+	WSACleanup();
+	return true;
+}
 
 bool run_server() {
     return wait_for_clients || clients_now > 0;
 }
 
 socket_int_t socket_setup() {
-    socket_int_t s = socket(AF_INET, SOCK_STREAM, 0);
-    if (s < 0) throw_err("Socket error");
+    socket_int_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s == INVALID_SOCKET) throw_err("Socket error");
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
 
     if (master_mode) {
-        fcntl(s, F_SETFL, O_NONBLOCK);
+		u_long mode = 1;
+		ioctlsocket(s, FIONBIO, &mode);
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port=htons(port_server);
         if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) throw_err("Bind error");
@@ -60,26 +76,30 @@ socket_int_t socket_setup() {
 }
 
 void socket_close(socket_int_t s) {
-    close(s);
+    closesocket(s);
 }
 
 bool socket_online(socket_int_t s) {
     char c;
     auto l = recv(s, &c, sizeof(char), MSG_PEEK);
-
-    return (l > 0) ? true : false;
+	auto err = WSAGetLastError();
+    return (l == SOCKET_ERROR && err != WSAEWOULDBLOCK) ? false : true;
 }
 
 bool socket_get_msg(socket_int_t s, net_msg* ret) {
     header_t head;
-    auto l = recv(s, &head, sizeof(header_t), 0);
+    auto l = recv(s, (char*)&head, sizeof(header_t), 0);
+	if (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) {
+		std::cerr << "get_msg: WSA return " << WSAGetLastError() << std::endl;
+	}
+	
     if (l < (signed)sizeof(header_t)) return false;
 
     ret->type = head.type;
     ret->len = head.raw_len - sizeof(header_t);
 
     if (ret->len == 0) return true;
-
+	const auto flag = (master_mode) ? 0 : MSG_WAITALL;
     // Копируем сообщение в ret
     ret->data = new char[ret->len];
     size_t bytes_got = 0;
@@ -90,16 +110,18 @@ bool socket_get_msg(socket_int_t s, net_msg* ret) {
         const size_t block_len = (bytes_remain > net_chunk_size) ? net_chunk_size : bytes_remain;
 
         // Принимаем блок
-        auto got = recv(s, &ret->data[bytes_got], block_len, MSG_WAITALL); // MSG_WAITALL заблокирует поток пока мы получаем данные
-        if (got == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) bytes_got++; // строка 101 уменьшит bytes_got, компенсируем
+        auto got = recv(s, &ret->data[bytes_got], block_len, flag); // MSG_WAITALL заблокирует поток пока мы получаем данные
+        if (got == SOCKET_ERROR) {
+			auto err = WSAGetLastError();
+            if (err == WSAEWOULDBLOCK) bytes_got++; // строка 101 уменьшит bytes_got, компенсируем
             else {
-                std::cout << "get_msg: " << strerror(errno) << " (" << errno << ")" << std::endl;
+                std::cout << "get_msg: " << strerror(err) << " (" << err << ")" << std::endl;
                 break;
             }
         }
         bytes_got+=got;
     }
+
     if (bytes_got < ret->len)
         std::cout << "get_msg: incomplete message got: " << bytes_got << " of " << ret->len << std::endl;
 
@@ -114,7 +136,6 @@ bool socket_send_msg(socket_int_t s, const net_msg& msg) {
 
     char* msg_raw = new char[raw_len];
     std::memcpy(msg_raw, &head, sizeof(header_t));
-
     std::memcpy(&msg_raw[sizeof(header_t)], msg.data, msg.len);
 
     size_t bytes_send = 0;
@@ -126,7 +147,7 @@ bool socket_send_msg(socket_int_t s, const net_msg& msg) {
 
         // Отправляем блок
         auto sent = send(s, &msg_raw[bytes_send], block_len, 0);
-        if (sent == -1) break;
+        if (sent == SOCKET_ERROR) break;
         bytes_send+=sent;
     }
     if (bytes_send < raw_len)
@@ -140,9 +161,9 @@ bool socket_send_msg(socket_int_t s, const msg_types msg) {
     header_t head;
     head.type = msg;
 
-    auto send_bytes = send(s, &head, sizeof(header_t), 0);
-    if (send_bytes < (signed)sizeof(header_t))
-        std::cout << "send_msg: incomplete message send (" << send_bytes << " of " << sizeof(msg_types) << ")" << std::endl;
+    auto bytes_send = send(s, (char*)&head, sizeof(header_t), 0);
+    if (bytes_send < (signed)sizeof(header_t))
+        std::cout << "send_msg: incomplete message send (" << bytes_send << " of " << sizeof(msg_types) << ")" << std::endl;
 
     return true;
 }
@@ -159,14 +180,15 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
     while (*run == true) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         socket_int_t try_accept = accept(sock_in, nullptr, nullptr);
-        if (try_accept > 0) {
+        if (try_accept != INVALID_SOCKET) {
             auto i = find_slot(clients);
             if (i == clients_max) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
             else {
                 std::cout << "Accepted client" << std::endl;
                 clients[i] = new socket_int_t;
                 *clients[i] = try_accept;
-                fcntl(*clients[i], F_SETFL, O_NONBLOCK);
+				u_long mode = 1;
+				ioctlsocket(try_accept, FIONBIO, &mode);
                 clients_now++;
                 wait_for_clients = false;
                 socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
@@ -174,8 +196,8 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
         }
         for (size_t i = 0; i < clients_max; i++) {
             if (clients[i] == nullptr) continue;
-            if (!socket_online(*clients[i]) && !(errno == EAGAIN || errno == EWOULDBLOCK)) {
-                std::cout << "Client disconnected" << std::endl;
+            if (!socket_online(*clients[i])) {
+                std::cout << "Client disconnected, WSA code " << WSAGetLastError() << std::endl;
                 socket_close(*clients[i]);
                 clients[i] = nullptr;
                 clients_now--;
@@ -190,3 +212,5 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
     }
     netd_started = false;
 }
+
+#endif /* _WIN32 */

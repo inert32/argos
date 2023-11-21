@@ -203,6 +203,7 @@ void saver_file::save_final() {
 }
 
 void saver_file::convert_ids() {
+	std::cout << "Converting ids, this will take time..." << std::endl;
 	// save_final сохраняет результаты в виде id векторов и треугольников.
 	// convert_ids должен перевести их в сами вектора и треугольники
 	auto ref = select_parser(nullptr);
