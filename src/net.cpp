@@ -125,19 +125,18 @@ void master_start(socket_int_t socket) {
     // Открываем поток приема сообщений
     th_queue<net_msg> queue;
     volatile bool threads_run = true;
-    socket_int_t** clients = new socket_int_t*[clients_max];
-    for (size_t i = 0; i < clients_max; i++) clients[i] = nullptr;
-    std::thread netd(netd_server, socket, clients, &queue, &threads_run);
+    clients_list cl;
+    std::thread netd(netd_server, socket, &cl, &queue, &threads_run);
     while (!netd_started) continue;
 
     std::cout << "Ready." << std::endl;
     size_t triangle_id = 0;
-    while (run_server()) { // Обработка сообщений
+    while (cl.run_server()) { // Обработка сообщений
         auto x = queue.take();
         if (!x) continue;
         auto msg = *x;
-        if (clients[msg.peer_id] == nullptr) continue;
-        auto send_to = *clients[msg.peer_id];
+        if (cl.get(msg.peer_id) == nullptr) continue;
+        auto send_to = *cl.get(msg.peer_id);
 
         switch (msg.type) {
             case msg_types::CLIENT_GET_VECTORS: {
@@ -171,9 +170,7 @@ void master_start(socket_int_t socket) {
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {
-                socket_close(*clients[msg.peer_id]);
-                clients[msg.peer_id] = nullptr;
-                clients_now--;
+                cl.remove(msg.peer_id);
                 break;
             }
             default: {

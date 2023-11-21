@@ -81,8 +81,7 @@ void socket_close(socket_int_t s) {
 bool socket_online(socket_int_t s) {
     char c;
     auto l = recv(s, &c, sizeof(char), MSG_PEEK);
-    auto err = WSAGetLastError();
-    return (l == SOCKET_ERROR && err != WSAEWOULDBLOCK) ? false : true;
+    return (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) ? false : true;
 }
 
 bool socket_get_msg(socket_int_t s, net_msg* ret) {
@@ -167,44 +166,40 @@ bool socket_send_msg(socket_int_t s, const msg_types msg) {
     return true;
 }
 
+void socket_set_nonblock(const socket_int_t s) {
+    ioctlsocket(s, FIONBIO, &mode);
+}
+
 size_t find_slot(socket_int_t** clients) {
     for (size_t i = 0; i < clients_max; i++)
         if (clients[i] == nullptr) return i;
     return clients_max;
 }
 
-void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>* queue, volatile bool* run) {
+void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
     netd_started = true;
 
     while (*run == true) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         socket_int_t try_accept = accept(sock_in, nullptr, nullptr);
-        if (try_accept != INVALID_SOCKET) {
-            auto i = find_slot(clients);
-            if (i == clients_max) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
-            else {
+        if (try_accept == INVALID_SOCKET) {
+            if (clients->try_add(try_accept)) {
                 std::cout << "Accepted client" << std::endl;
-                clients[i] = new socket_int_t;
-                *clients[i] = try_accept;
-                u_long mode = 1;
-                ioctlsocket(try_accept, FIONBIO, &mode);
-                clients_now++;
-                wait_for_clients = false;
                 socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
             }
+            else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
         }
         for (size_t i = 0; i < clients_max; i++) {
-            if (clients[i] == nullptr) continue;
-            if (!socket_online(*clients[i])) {
-                std::cout << "Client disconnected, WSA code " << WSAGetLastError() << std::endl;
-                socket_close(*clients[i]);
-                clients[i] = nullptr;
-                clients_now--;
+            auto c = clients->get(i);
+            if (c == nullptr) continue;
+            if (!socket_online(*c)) {
+                std::cout << "Client disconnected" << std::endl;
+                clients->remove(i);
                 continue;
             }
 
             net_msg ret;
-            if (!socket_get_msg(*clients[i], &ret)) continue;
+            if (!socket_get_msg(*c, &ret)) continue;
             ret.peer_id = i;
             queue->add(ret);
         }

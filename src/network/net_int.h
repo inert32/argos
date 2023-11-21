@@ -13,6 +13,23 @@ struct header_t {
     msg_types type = msg_types::BOTH_UNKNOWN;
 };
 
+class clients_list {
+public:
+    clients_list();
+    ~clients_list();
+
+    bool try_add(const socket_int_t s);
+    void remove(const size_t id);
+    socket_int_t* get(const size_t id) const;
+    size_t count() const;
+
+    bool run_server() const;
+private:
+    bool wait_for_clients = true;
+    size_t clients_count = 0;
+    std::vector<socket_int_t*> list;
+};
+
 // Функции работы с сокетами
 // TODO: Переработать в класс
 // Создать сокет
@@ -27,6 +44,8 @@ bool socket_get_msg(socket_int_t s, net_msg* ret);
 bool socket_send_msg(socket_int_t s, const net_msg& msg);
 // Отправить сообщение без тела, только заголовок
 bool socket_send_msg(socket_int_t s, const msg_types msg);
+
+void socket_set_nonblock(const socket_int_t s);
 
 // Флаг работы сетевого потока (только для сервера)
 extern bool netd_started;
@@ -46,6 +65,6 @@ bool init_network();
 void shutdown_network();
 
 // Сетевой поток
-void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>* queue, volatile bool* run);
+void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run);
 
 #endif /* __NET_INT_H__ */
