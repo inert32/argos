@@ -20,9 +20,9 @@ struct ipv4_t {
     }
 
     friend std::ostream& operator<<(std::ostream& os, const ipv4_t& p) {
-		os << p.ip << ":" << p.port;
-		return os;
-	}
+        os << p.ip << ":" << p.port;
+        return os;
+    }
 
     void from_string(const std::string& str) {
         auto pos = str.find(':');

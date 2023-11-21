@@ -24,23 +24,23 @@ struct header_t {
 };
 
 #define throw_err(msg) \
-	throw std::runtime_error(std::string(msg) + ": " + \
-	strerror(WSAGetLastError()) + " (" + \
-	std::to_string(WSAGetLastError()) + ")")
+    throw std::runtime_error(std::string(msg) + ": " + \
+    strerror(WSAGetLastError()) + " (" + \
+    std::to_string(WSAGetLastError()) + ")")
 
 bool init_network() {
-	WSADATA data;
-	auto start = WSAStartup(MAKEWORD(2, 2), &data);
-	if (start != 0) {
-		std::cerr << "WSA: WSAStartup: " << start << std::endl;
-		return false;
-	}
-	return true;
+    WSADATA data;
+    auto start = WSAStartup(MAKEWORD(2, 2), &data);
+    if (start != 0) {
+        std::cerr << "WSA: WSAStartup: " << start << std::endl;
+        return false;
+    }
+    return true;
 }
 
 bool shutdown_network() {
-	WSACleanup();
-	return true;
+    WSACleanup();
+    return true;
 }
 
 bool run_server() {
@@ -55,8 +55,8 @@ socket_int_t socket_setup() {
     addr.sin_family = AF_INET;
 
     if (master_mode) {
-		u_long mode = 1;
-		ioctlsocket(s, FIONBIO, &mode);
+        u_long mode = 1;
+        ioctlsocket(s, FIONBIO, &mode);
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port=htons(port_server);
         if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) throw_err("Bind error");
@@ -82,24 +82,24 @@ void socket_close(socket_int_t s) {
 bool socket_online(socket_int_t s) {
     char c;
     auto l = recv(s, &c, sizeof(char), MSG_PEEK);
-	auto err = WSAGetLastError();
+    auto err = WSAGetLastError();
     return (l == SOCKET_ERROR && err != WSAEWOULDBLOCK) ? false : true;
 }
 
 bool socket_get_msg(socket_int_t s, net_msg* ret) {
     header_t head;
     auto l = recv(s, (char*)&head, sizeof(header_t), 0);
-	if (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) {
-		std::cerr << "get_msg: WSA return " << WSAGetLastError() << std::endl;
-	}
-	
+    if (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) {
+        std::cerr << "get_msg: WSA return " << WSAGetLastError() << std::endl;
+    }
+    
     if (l < (signed)sizeof(header_t)) return false;
 
     ret->type = head.type;
     ret->len = head.raw_len - sizeof(header_t);
 
     if (ret->len == 0) return true;
-	const auto flag = (master_mode) ? 0 : MSG_WAITALL;
+    const auto flag = (master_mode) ? 0 : MSG_WAITALL;
     // Копируем сообщение в ret
     ret->data = new char[ret->len];
     size_t bytes_got = 0;
@@ -112,7 +112,7 @@ bool socket_get_msg(socket_int_t s, net_msg* ret) {
         // Принимаем блок
         auto got = recv(s, &ret->data[bytes_got], block_len, flag); // MSG_WAITALL заблокирует поток пока мы получаем данные
         if (got == SOCKET_ERROR) {
-			auto err = WSAGetLastError();
+            auto err = WSAGetLastError();
             if (err == WSAEWOULDBLOCK) bytes_got++; // строка 101 уменьшит bytes_got, компенсируем
             else {
                 std::cout << "get_msg: " << strerror(err) << " (" << err << ")" << std::endl;
@@ -187,8 +187,8 @@ void netd_server(socket_int_t sock_in, socket_int_t** clients, th_queue<net_msg>
                 std::cout << "Accepted client" << std::endl;
                 clients[i] = new socket_int_t;
                 *clients[i] = try_accept;
-				u_long mode = 1;
-				ioctlsocket(try_accept, FIONBIO, &mode);
+                u_long mode = 1;
+                ioctlsocket(try_accept, FIONBIO, &mode);
                 clients_now++;
                 wait_for_clients = false;
                 socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);

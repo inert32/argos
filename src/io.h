@@ -16,78 +16,78 @@
 // Интерфейс для чтения файла вершин (с диска или по сети, разных форматов)
 class reader_base {
 public:
-	reader_base() = default;
-	~reader_base() = default;
+    reader_base() = default;
+    ~reader_base() = default;
 
-	// Получение треугольника из файла
-	virtual bool get_next_triangle(triangle* ret) = 0;
-	virtual bool get_triangle(triangle* ret, const size_t id) = 0;
-	// Получение векторов из файла
-	virtual void get_vectors() = 0;
+    // Получение треугольника из файла
+    virtual bool get_next_triangle(triangle* ret) = 0;
+    virtual bool get_triangle(triangle* ret, const size_t id) = 0;
+    // Получение векторов из файла
+    virtual void get_vectors() = 0;
 
-	// Проверка наличия треугольников в файле
-	virtual bool have_triangles() const = 0;
+    // Проверка наличия треугольников в файле
+    virtual bool have_triangles() const = 0;
 };
 
 // Собственный формат файла вершин
 class reader_argos : public reader_base {
 public:
-	reader_argos();
+    reader_argos();
 
-	// Получение треугольника из файла
-	bool get_next_triangle(triangle* ret);
-	bool get_triangle(triangle* ret, const size_t id);
-	// Получение векторов из файла
-	void get_vectors();
+    // Получение треугольника из файла
+    bool get_next_triangle(triangle* ret);
+    bool get_triangle(triangle* ret, const size_t id);
+    // Получение векторов из файла
+    void get_vectors();
 
-	bool have_triangles() const;
+    bool have_triangles() const;
 private:
-	std::ifstream file;
-	std::streampos triangles_start, vectors_start;
-	std::streampos triangles_current;
+    std::ifstream file;
+    std::streampos triangles_start, vectors_start;
+    std::streampos triangles_current;
 };
 
 // Интерфейс для сохранения результатов
 class saver_base {
 public:
-	saver_base();
-	~saver_base() = default;
+    saver_base();
+    ~saver_base() = default;
 
-	// Сохранение чанка данных
-	virtual void save_tmp(volatile char** mat, const unsigned int count) = 0;
+    // Сохранение чанка данных
+    virtual void save_tmp(volatile char** mat, const unsigned int count) = 0;
 
-	// Объединение временного файла в выходной файл
-	virtual void save_final() = 0;
+    // Объединение временного файла в выходной файл
+    virtual void save_final() = 0;
 
-	// Перевод идентификаторов в треугольники и векторы
-	virtual void convert_ids() = 0;
+    // Перевод идентификаторов в треугольники и векторы
+    virtual void convert_ids() = 0;
 
 protected:
-	std::string tmp_path;
-	std::string final_path;
+    std::string tmp_path;
+    std::string final_path;
 };
 
 // Сохранение результатов в файл
 class saver_file : public saver_base {
 public:
-	saver_file();
-	~saver_file();
+    saver_file();
+    ~saver_file();
 
-	void save_tmp(volatile char** mat, const unsigned int count);
-	void save_final();
+    void save_tmp(volatile char** mat, const unsigned int count);
+    void save_final();
 
-	void convert_ids();
+    void convert_ids();
 private:
-	std::fstream tmp_file;
+    std::fstream tmp_file;
 };
 
 class saver_dummy : public saver_base {
 public:
-	saver_dummy() = default;
+    saver_dummy() = default;
 
-	void save_tmp([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
-	void save_final() {}
-	void convert_ids() {}
+    void save_tmp([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
+    void save_final() {}
+    void convert_ids() {}
 };
 
 // Выбор парсера в зависимости от режима работы и типа файла

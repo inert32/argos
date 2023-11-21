@@ -26,29 +26,29 @@ struct thread_task {
 
 // Вычилсение столкновений
 char calc_collision(const triangle& t, const vec3& v) {
-	// Представляем треугольник как лучи от одной точки
-	const point dir(v.from, v.to);
-	point e1(t.A, t.B), e2(t.A, t.C);
+    // Представляем треугольник как лучи от одной точки
+    const point dir(v.from, v.to);
+    point e1(t.A, t.B), e2(t.A, t.C);
 
-	// Вычисление вектора нормали к плоскости
-	point pvec = dir | e2;
-	float det = e1 * pvec;
+    // Вычисление вектора нормали к плоскости
+    point pvec = dir | e2;
+    float det = e1 * pvec;
 
-	// Луч параллелен плоскости
-	if (det < EPS && det > -EPS) return 0;
+    // Луч параллелен плоскости
+    if (det < EPS && det > -EPS) return 0;
 
-	float inv_det = 1 / det;
-	point tvec(t.A, v.from);
+    float inv_det = 1 / det;
+    point tvec(t.A, v.from);
 
-	float coord_u = tvec * pvec * inv_det;
-	if (coord_u < 0.0 || coord_u > 1.0) return 0;
+    float coord_u = tvec * pvec * inv_det;
+    if (coord_u < 0.0 || coord_u > 1.0) return 0;
 
-	point qvec = tvec | e1;
-	float coord_v = dir * qvec * inv_det;
-	if (coord_v < 0 || coord_u + coord_v > 1) return 0;
+    point qvec = tvec | e1;
+    float coord_v = dir * qvec * inv_det;
+    if (coord_v < 0 || coord_u + coord_v > 1) return 0;
 
-	float coord_t = e2 * qvec * inv_det;
-	return (coord_t > EPS) ? 1 : 0;
+    float coord_t = e2 * qvec * inv_det;
+    return (coord_t > EPS) ? 1 : 0;
 }
 
 // Вычисления в отдельном потоке
@@ -86,7 +86,7 @@ void solo_start(socket_int_t* socket) {
         else std::cout << "Solo mode" << std::endl;
 
         auto p = select_parser(socket);
-		auto s = select_saver(socket);
+        auto s = select_saver(socket);
 
         // Загружаем векторы
         p->get_vectors();
@@ -94,7 +94,7 @@ void solo_start(socket_int_t* socket) {
 
         // Создаем матрицу ответов
         const size_t vec_count = vectors.size();
-		volatile char** ans_matr = new volatile char*[vec_count];
+        volatile char** ans_matr = new volatile char*[vec_count];
         for (size_t i = 0; i < vec_count; i++) {
             ans_matr[i] = new volatile char[chunk_elements];
             for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = 2;
@@ -110,20 +110,20 @@ void solo_start(socket_int_t* socket) {
         while (p->have_triangles()) {
             // Загружаем треугольники
             triangle load; size_t count = 0;
-	    	while (count < chunk_elements && p->get_next_triangle(&load)) {
+            while (count < chunk_elements && p->get_next_triangle(&load)) {
                 load.id = triangle_id++;
-		    	triangles.push_back(load);
-			    count++;
-		    }
+                triangles.push_back(load);
+                count++;
+            }
             if (count == 0) break;
 
             // Помечаем матрицу как непроверенную перед вычислением новых треугольников
             // До 0f4eb59d77c8a4a2d1a3efc87a03d9307a0b2260 матрица пересоздавалась 
             // каждую итерацию цикла, теперь метку о заполнении строки нужно ставить вручную.
             for (size_t i = 0; i < vec_count; i++) {
-	    		ans_matr[i] = new volatile char[count];
-		    	for (size_t j = 0; j < count; j++) ans_matr[i][j] = 2;
-    		}
+                ans_matr[i] = new volatile char[count];
+                for (size_t j = 0; j < count; j++) ans_matr[i][j] = 2;
+            }
 
             std::cout << "Calculating triangles: " << 1 + chunks_count
                         << " of " << chunks_count + count << std::endl;
@@ -169,7 +169,7 @@ void solo_start(socket_int_t* socket) {
         s->convert_ids();
     }
     catch (const std::runtime_error& e) {
-		std::cerr << "err: " << e.what() << std::endl;
-		return;
+        std::cerr << "err: " << e.what() << std::endl;
+        return;
     }
 }

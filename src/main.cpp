@@ -24,24 +24,24 @@ void solo_start(socket_int_t* socket);
 reader_base* select_parser(socket_int_t* s) {
     if (s != nullptr) return new reader_network(*s);
 
-	std::ifstream file(verticies_file, std::ios::binary);
-	if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
+    std::ifstream file(verticies_file, std::ios::binary);
+    if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
 
-	// Проверяем заголовки
-	std::string header;
-	std::getline(file, header);
-	file.close();
+    // Проверяем заголовки
+    std::string header;
+    std::getline(file, header);
+    file.close();
 
-	if (header[0] == 'V' && header[1] == ':')
-		return new reader_argos();
-	else // Неизвестный формат
-		throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
+    if (header[0] == 'V' && header[1] == ':')
+        return new reader_argos();
+    else // Неизвестный формат
+        throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
 }
 
 saver_base* select_saver(socket_int_t* s) {
     if (s != nullptr) return new saver_network(*s);
 
-	return new saver_file();
+    return new saver_file();
 }
 
 int show_help() {
@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
 
     // Определяем режим работы
     try {
-		init_network();
+        init_network();
         if (master_mode) { // Режим мастер-сервера
             socket_int_t sock = socket_setup();
             master_start(sock);
@@ -155,11 +155,11 @@ int main(int argc, char** argv) {
             }
             else solo_start(nullptr); // Одиночный режим
         }
-		shutdown_network();
+        shutdown_network();
     }
     catch (const std::exception& e) {
         std::cerr << "err: " << e.what() << std::endl;
-		shutdown_network();
+        shutdown_network();
     }
 
     return 0;

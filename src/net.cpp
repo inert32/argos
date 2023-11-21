@@ -79,20 +79,20 @@ saver_network::saver_network(socket_int_t s) : saver_base() {
 }
 
 void saver_network::save_tmp(volatile char** mat, const unsigned int count) {
-	const size_t vec_count = vectors.size();
+    const size_t vec_count = vectors.size();
     std::string payload;
-	// Для каждого вектора указываем
-	for (size_t vec = 0; vec < vec_count; vec++) {
-		auto& curr_vec = vectors[vec];
-		payload += std::to_string(curr_vec.id) + ":";
+    // Для каждого вектора указываем
+    for (size_t vec = 0; vec < vec_count; vec++) {
+        auto& curr_vec = vectors[vec];
+        payload += std::to_string(curr_vec.id) + ":";
 
-		for (size_t tr = 0; tr < count; tr++)
-			if (mat[vec][tr] == 1) {
-				auto& t = triangles[tr];
+        for (size_t tr = 0; tr < count; tr++)
+            if (mat[vec][tr] == 1) {
+                auto& t = triangles[tr];
                 payload += std::to_string(t.id) + " ";
-			}
-		payload += '\n';
-	}
+            }
+        payload += '\n';
+    }
 
     net_msg msg;
     msg.type = msg_types::CLIENT_DATA;

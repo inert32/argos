@@ -40,19 +40,19 @@ public:
         return { 
             y * v.z - z * v.y,
             z * v.x - x * v.z,
-		    x * v.y - y * v.x 
+            x * v.y - y * v.x 
         };
     }
 
     // Человекочитаемый вывод
     std::string to_string() const {
         return "{ " + std::to_string(x) + " ; " + std::to_string(y) + " ; " + std::to_string(z) + " }";
-	}
+    }
 
     // Машинный вывод
     std::string to_string_raw() const {
         return std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
-	}
+    }
 
     void from_char(const char* src) {
         float parts[3];
@@ -106,7 +106,7 @@ public:
     }
 
     size_t id = 0; // Порядковый номер в файле вершин
-	point from, to;
+    point from, to;
 
     // id не передается по сети, но влияет на sizeof(), из-за чего
     // отправлялся буфер неверного размера
