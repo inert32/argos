@@ -25,10 +25,6 @@ bool init_network() { return true; }
 
 void shutdown_network() {}
 
-bool run_server() {
-    return wait_for_clients || clients_now > 0;
-}
-
 socket_int_t socket_setup() {
     socket_int_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s < 0) throw_err("Socket error");
@@ -100,6 +96,8 @@ bool socket_get_msg(socket_int_t s, net_msg* ret) {
     if (bytes_got < ret->len)
         std::cout << "get_msg: incomplete message got: " << bytes_got << " of " << ret->len << std::endl;
 
+    std::cout << "get_msg: Checksum: " << calc_checksum(*ret) << std::endl;
+
     return true;
 }
 
@@ -111,6 +109,8 @@ bool socket_send_msg(socket_int_t s, const net_msg& msg) {
 
     char* msg_raw = new char[raw_len];
     std::memcpy(msg_raw, &head, sizeof(header_t));
+
+    std::cout << "send_msg: Checksum: " << calc_checksum(msg) << std::endl;
 
     std::memcpy(&msg_raw[sizeof(header_t)], msg.data, msg.len);
 
@@ -155,9 +155,11 @@ void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>*
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         socket_int_t try_accept = accept(sock_in, nullptr, nullptr);
         if (try_accept > 0) {
-			if (clients->try_add(try_accept)) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
-			else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
+            if (clients->try_add(try_accept)) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
+            else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
         }
+        if (clients->count() < clients_min) continue;
+
         for (size_t i = 0; i < clients_max; i++) {
             auto c = clients->get(i);
             if (c == nullptr) continue;

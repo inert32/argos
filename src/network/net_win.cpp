@@ -156,14 +156,8 @@ bool socket_send_msg(socket_int_t s, const msg_types msg) {
 }
 
 void socket_set_nonblock(const socket_int_t s) {
-	u_long mode = 1;
+    u_long mode = 1;
     ioctlsocket(s, FIONBIO, &mode);
-}
-
-size_t find_slot(socket_int_t** clients) {
-    for (size_t i = 0; i < clients_max; i++)
-        if (clients[i] == nullptr) return i;
-    return clients_max;
 }
 
 void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
@@ -176,7 +170,7 @@ void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>*
             if (clients->try_add(try_accept)) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
             else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
         }
-		if (clients->count() < clients_min) continue;
+        if (clients->count() < clients_min) continue;
 
         for (size_t i = 0; i < clients_max; i++) {
             auto c = clients->get(i);

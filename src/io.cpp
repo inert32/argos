@@ -20,7 +20,10 @@ std::set<size_t> clear_repeats(const std::string& str) {
         try {
             ret.insert(std::stoul(num));
         }
-        catch (const std::exception&) { continue; }
+        catch (const std::exception&) {
+            std::cout << "clear_repeats: failed to process line '" << str << "', raw num: " << num << std::endl;
+            continue;
+        }
 
         space_pos_old = space_pos;
     }

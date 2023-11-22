@@ -30,6 +30,8 @@ private:
     std::vector<socket_int_t*> list;
 };
 
+int calc_checksum(const net_msg& msg);
+
 // Функции работы с сокетами
 // TODO: Переработать в класс
 // Создать сокет
