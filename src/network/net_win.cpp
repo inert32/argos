@@ -15,13 +15,6 @@
 #include "net_int.h"
 
 bool netd_started = false;
-size_t clients_now = 0;
-bool wait_for_clients = true;
-
-struct header_t {
-    size_t raw_len = sizeof(header_t);
-    msg_types type = msg_types::BOTH_UNKNOWN;
-};
 
 #define throw_err(msg) \
     throw std::runtime_error(std::string(msg) + ": " + \
@@ -40,10 +33,6 @@ bool init_network() {
 
 void shutdown_network() {
     WSACleanup();
-}
-
-bool run_server() {
-    return wait_for_clients || clients_now > 0;
 }
 
 socket_int_t socket_setup() {
@@ -167,6 +156,7 @@ bool socket_send_msg(socket_int_t s, const msg_types msg) {
 }
 
 void socket_set_nonblock(const socket_int_t s) {
+	u_long mode = 1;
     ioctlsocket(s, FIONBIO, &mode);
 }
 
@@ -182,18 +172,16 @@ void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>*
     while (*run == true) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
         socket_int_t try_accept = accept(sock_in, nullptr, nullptr);
-        if (try_accept == INVALID_SOCKET) {
-            if (clients->try_add(try_accept)) {
-                std::cout << "Accepted client" << std::endl;
-                socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
-            }
+        if (try_accept != INVALID_SOCKET) {
+            if (clients->try_add(try_accept)) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
             else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
         }
+		if (clients->count() < clients_min) continue;
+
         for (size_t i = 0; i < clients_max; i++) {
             auto c = clients->get(i);
             if (c == nullptr) continue;
             if (!socket_online(*c)) {
-                std::cout << "Client disconnected" << std::endl;
                 clients->remove(i);
                 continue;
             }

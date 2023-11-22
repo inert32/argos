@@ -52,8 +52,8 @@ extern bool netd_started;
 
 // Максимум клиентов
 constexpr size_t clients_max = 10;
-// Текущее число клиентов
-extern size_t clients_now;
+
+extern size_t clients_min;
 
 constexpr size_t net_chunk_size = 1024;
 

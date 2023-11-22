@@ -4,6 +4,9 @@
 #include "../settings.h"
 #include "net_int.h"
 
+size_t clients_now = 0;
+size_t clients_min = 3;
+
 clients_list::clients_list() {
     list.reserve(clients_max);
     for (size_t i = 0; i < clients_max; i++)
@@ -25,14 +28,17 @@ bool clients_list::try_add(const socket_int_t s) {
             
             clients_count++;
             wait_for_clients = false;
+			std::cout << "Accepted client" << std::endl;
             return true;
         }
     return false;
 }
 
 void clients_list::remove(const size_t id) {
-    list.erase(list.begin() + id);
+	delete list[id];
+	list[id] = nullptr;
     clients_count--;
+	std::cout << "Client disconnect" << std::endl;
 }
 
 socket_int_t* clients_list::get(const size_t id) const {
