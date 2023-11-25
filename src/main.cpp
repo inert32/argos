@@ -10,14 +10,6 @@
 #include "base.h"
 #include "net.h"
 
-std::filesystem::path verticies_file;
-std::filesystem::path output_file = "output.list";
-ipv4_t master_addr;
-bool master_mode = false;
-unsigned int chunk_elements = 100;
-unsigned int threads_count = 0;
-bool keep_tmp = true;
-
 // Начало работы в одиночном режиме
 void solo_start(socket_int_t* socket);
 
@@ -46,15 +38,17 @@ saver_base* select_saver(socket_int_t* s) {
 
 int show_help() {
     std::cout << "usage: argos --file <PATH> | --connect <ADDR>" << std::endl;
-    std::cout << "     --file <PATH>     - use verticies file" << std::endl;
-    std::cout << "     --connect <ADDR>  - connect to master server (IPv4 only)" << std::endl;
-    std::cout << "     --master          - be master node (default off)" << std::endl;
-    std::cout << "     --output <PATH>   - path to the output file (default " << output_file << ")" << std::endl;
-    std::cout << "     --chunk <COUNT>   - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
-    std::cout << "     --threads <COUNT> - count of threads for calculation (default " << threads_count << ")" << std::endl;
-    std::cout << "     --port <PORT>     - set server port (default " << port_server << ")" << std::endl;
-    std::cout << "     --keep-tmp        - keep temporary files (default off)";
-    std::cout << "     --help            - this help" << std::endl;
+    std::cout << "     --file <PATH>         - use verticies file" << std::endl;
+    std::cout << "     --connect <ADDR>      - connect to master server (IPv4 only)" << std::endl;
+    std::cout << "     --master              - be master node (default off)" << std::endl;
+    std::cout << "     --output <PATH>       - path to the output file (default " << output_file << ")" << std::endl;
+    std::cout << "     --chunk <COUNT>       - count of triangles to load per cycle (default " << chunk_elements << ")" << std::endl;
+    std::cout << "     --threads <COUNT>     - count of threads for calculation (default " << threads_count << ")" << std::endl;
+    std::cout << "     --port <PORT>         - set server port (default " << port_server << ")" << std::endl;
+    std::cout << "     --min-clients <COUNT> - set minimal clients count to start (default " << clients_min << ")" << std::endl;
+    std::cout << "     --max-clients <COUNT> - set maximum clients count (default " << clients_max << ")" << std::endl;
+    std::cout << "     --keep-tmp            - keep temporary files (default off)";
+    std::cout << "     --help                - this help" << std::endl;
     return 0;
 }
 
@@ -74,6 +68,8 @@ bool parse_cli(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         std::string buf(argv[i]);
 
+        if (buf == "--keep-tmp") keep_tmp = true;
+        if (buf == "--master") master_mode = true;
         if (buf == "--file") {
             if (i + 1 < argc) verticies_file = argv[++i];
             else {
@@ -85,39 +81,30 @@ bool parse_cli(int argc, char** argv) {
             if (i + 1 < argc) output_file = argv[++i];
             else std::cerr << "warn: parse_cli: no output file provided, using default: " << output_file << std::endl;
         }
-        if (buf == "--chunk") {
-            if (i + 1 < argc) {
-                try {
-                    chunk_elements = std::stoi(argv[++i]);
-                }
-                catch (const std::exception&) {
-                    std::cerr << "warn: parse_cli: no chunk count provided, using default: " << chunk_elements << std::endl;
-                }
+        if (i + 1 < argc) {
+            i++;
+            if (buf == "--chunk") {
+                try { chunk_elements = std::stoi(argv[i]); }
+                catch (const std::exception&) { chunk_elements = 100; }
+            }
+            if (buf == "--threads") {
+                try { threads_count = std::stoi(argv[i]); }
+                catch (const std::exception&) { threads_count = 0; }
+            }
+            if (buf == "--connect") master_addr.from_string(argv[i]);
+            if (buf == "--port") {
+                try { port_server = std::stoi(argv[i]); }
+                catch (const std::exception&) { port_server = 3700; }
+            }
+            if (buf == "--min-clients") {
+                try { clients_min = std::stoul(argv[i]); }
+                catch (const std::exception&) { clients_min = 0; }
+            }
+            if (buf == "--max-clients") {
+                try { clients_max = std::stoul(argv[i]); }
+                catch (const std::exception&) { clients_max = 10; }
             }
         }
-        if (buf == "--threads") {
-            if (i + 1 < argc) {
-                try {
-                    threads_count = std::stoi(argv[++i]);
-                }
-                catch (const std::exception&) {
-                    threads_count = 0;
-                }
-            }
-        }
-        if (buf == "--master") master_mode = true;
-        if (buf == "--connect") if (i + 1 < argc) master_addr.from_string(argv[++i]);
-        if (buf == "--port") {
-            if (i + 1 < argc) {
-                try {
-                    port_server = std::stoi(argv[++i]);
-                }
-                catch (const std::exception&) {
-                    port_server = 3700;
-                }
-            }
-        }
-        if (buf == "--keep-tmp") keep_tmp = true;
     }
     return true;
 }

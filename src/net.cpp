@@ -9,10 +9,6 @@
 #include "th_queue.h"
 #include "net.h"
 
-unsigned int port_server = 3700;
-
-// Функции конвертации
-
 reader_network::reader_network(socket_int_t s) : reader_base() {
     std::cout << "Connected to: " << master_addr << std::endl;
     conn = s;

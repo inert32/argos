@@ -5,7 +5,6 @@
 #include "net_int.h"
 
 size_t clients_now = 0;
-size_t clients_min = 0;
 
 clients_list::clients_list() {
     list.reserve(clients_max);

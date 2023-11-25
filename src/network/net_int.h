@@ -52,11 +52,6 @@ void socket_set_nonblock(const socket_int_t s);
 // Флаг работы сетевого потока (только для сервера)
 extern bool netd_started;
 
-// Максимум клиентов
-constexpr size_t clients_max = 10;
-
-extern size_t clients_min;
-
 constexpr size_t net_chunk_size = 1024;
 
 // Флаг работы сервера

@@ -10,7 +10,7 @@ configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 add_executable(argos
 src/main.cpp src/solo.cpp src/io.cpp src/net.cpp
 src/network/net_linux.cpp src/network/net_win.cpp
-src/network/net_int.cpp
+src/network/net_int.cpp src/settings.cpp
 
 src/settings.h src/base.h src/point.h src/th_queue.h src/io.h
 src/net.h src/network/net_def.h src/network/net_int.h)
