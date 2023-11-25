@@ -8,6 +8,8 @@
 #include <ostream>
 #include <cstring>
 
+struct sockaddr;
+
 extern unsigned int port_server;
 
 constexpr size_t ipv4_ip_len = 16;
@@ -41,6 +43,8 @@ struct ipv4_t {
         for (int i = 0; i < 16; i++) ret.push_back(ip[i]);
         return ret + ":" + std::to_string(port);
     }
+    ipv4_t() = default;
+    ipv4_t(const sockaddr src);
 };
 
 enum class msg_types {

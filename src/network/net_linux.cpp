@@ -25,6 +25,14 @@ bool init_network() { return true; }
 
 void shutdown_network() {}
 
+ipv4_t::ipv4_t(const sockaddr src) {
+    sockaddr_in data = *(sockaddr_in*)&src;
+    port = ntohs(data.sin_port);
+
+    const auto addr_raw = inet_ntoa(data.sin_addr);
+    if (addr_raw != nullptr) std::memcpy(ip, addr_raw, ipv4_ip_len);
+}
+
 socket_int_t socket_setup() {
     socket_int_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s < 0) throw_err("Socket error");
@@ -146,12 +154,17 @@ void socket_set_nonblock(const socket_int_t s) {
 
 void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
     netd_started = true;
+    sockaddr addr;
+    socklen_t len = sizeof(sockaddr);
 
     while (*run == true) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
-        socket_int_t try_accept = accept(sock_in, nullptr, nullptr);
+        socket_int_t try_accept = accept(sock_in, &addr, &len);
         if (try_accept > 0) {
-            if (clients->try_add(try_accept)) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
+            if (clients->try_add(try_accept)) {
+                std::cout << "Accepted client " << ipv4_t(addr) << std::endl;
+                socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
+            }
             else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
         }
         if (clients->count() < clients_min) continue;

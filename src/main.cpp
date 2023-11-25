@@ -17,7 +17,7 @@ reader_base* select_parser(socket_int_t* s) {
     if (s != nullptr) return new reader_network(*s);
 
     std::ifstream file(verticies_file, std::ios::binary);
-    if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + output_file.string());
+    if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + verticies_file.string());
 
     // Проверяем заголовки
     std::string header;
@@ -82,26 +82,25 @@ bool parse_cli(int argc, char** argv) {
             else std::cerr << "warn: parse_cli: no output file provided, using default: " << output_file << std::endl;
         }
         if (i + 1 < argc) {
-            i++;
             if (buf == "--chunk") {
-                try { chunk_elements = std::stoi(argv[i]); }
+                try { chunk_elements = std::stoi(argv[++i]); }
                 catch (const std::exception&) { chunk_elements = 100; }
             }
             if (buf == "--threads") {
-                try { threads_count = std::stoi(argv[i]); }
+                try { threads_count = std::stoi(argv[++i]); }
                 catch (const std::exception&) { threads_count = 0; }
             }
-            if (buf == "--connect") master_addr.from_string(argv[i]);
+            if (buf == "--connect") master_addr.from_string(argv[++i]);
             if (buf == "--port") {
-                try { port_server = std::stoi(argv[i]); }
+                try { port_server = std::stoi(argv[++i]); }
                 catch (const std::exception&) { port_server = 3700; }
             }
             if (buf == "--min-clients") {
-                try { clients_min = std::stoul(argv[i]); }
+                try { clients_min = std::stoul(argv[++i]); }
                 catch (const std::exception&) { clients_min = 0; }
             }
             if (buf == "--max-clients") {
-                try { clients_max = std::stoul(argv[i]); }
+                try { clients_max = std::stoul(argv[++i]); }
                 catch (const std::exception&) { clients_max = 10; }
             }
         }

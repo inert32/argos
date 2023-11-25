@@ -86,8 +86,6 @@ void saver_network::finalize() {
         msg.len = final_file.gcount();
         msg.data = line;
 
-        std::cout << "client debug: read " << msg.len << " bytes" << std::endl;
-
         socket_send_msg(conn, msg);
     }
 }
@@ -153,10 +151,8 @@ void master_start(socket_int_t socket) {
                 break;
             }
             case msg_types::CLIENT_DATA: {
-                const auto a = tmpfile.tellp();
                 tmpfile.write(msg.data, msg.len);
                 tmpfile.flush();
-                std::cout << "server debug: wrote " << tmpfile.tellp() - a << " bytes" << std::endl;
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {

@@ -1,6 +1,5 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
-#include <iostream>
 #include "../settings.h"
 #include "net_int.h"
 
@@ -27,7 +26,6 @@ bool clients_list::try_add(const socket_int_t s) {
             
             clients_count++;
             wait_for_clients = false;
-            std::cout << "Accepted client" << std::endl;
             return true;
         }
     return false;
@@ -37,7 +35,6 @@ void clients_list::remove(const size_t id) {
     delete list[id];
     list[id] = nullptr;
     clients_count--;
-    std::cout << "Client disconnect" << std::endl;
 }
 
 socket_int_t* clients_list::get(const size_t id) const {
