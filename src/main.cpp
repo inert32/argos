@@ -16,7 +16,7 @@ ipv4_t master_addr;
 bool master_mode = false;
 unsigned int chunk_elements = 100;
 unsigned int threads_count = 0;
-bool keep_tmp = false;
+bool keep_tmp = true;
 
 // Начало работы в одиночном режиме
 void solo_start(socket_int_t* socket);
@@ -41,7 +41,7 @@ reader_base* select_parser(socket_int_t* s) {
 saver_base* select_saver(socket_int_t* s) {
     if (s != nullptr) return new saver_network(*s);
 
-    return new saver_file();
+    return new saver_local();
 }
 
 int show_help() {

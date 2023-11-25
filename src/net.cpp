@@ -78,37 +78,29 @@ saver_network::saver_network(socket_int_t s) : saver_base() {
     conn = s;
 }
 
-void saver_network::save_tmp(volatile char** mat, const unsigned int count) {
-    const size_t vec_count = vectors.size();
-    std::string payload;
-    // Для каждого вектора указываем
-    for (size_t vec = 0; vec < vec_count; vec++) {
-        auto& curr_vec = vectors[vec];
-        payload += std::to_string(curr_vec.id) + ":";
+void saver_network::finalize() {
+    reset_file(final_file);
 
-        for (size_t tr = 0; tr < count; tr++)
-            if (mat[vec][tr] == 1) {
-                auto& t = triangles[tr];
-                payload += std::to_string(t.id) + " ";
-            }
-        payload += '\n';
+    char line[net_chunk_size];
+    while (final_file.good()) {
+        final_file.read(line, net_chunk_size);
+
+        net_msg msg;
+        msg.type = msg_types::CLIENT_DATA;
+        msg.len = final_file.gcount();
+        msg.data = line;
+
+        std::cout << "client debug: read " << msg.len << " bytes" << std::endl;
+
+        socket_send_msg(conn, msg);
     }
-
-    net_msg msg;
-    msg.type = msg_types::CLIENT_DATA;
-    msg.len = payload.length();
-    msg.data = new char[msg.len];
-    std::memcpy(msg.data, payload.c_str(), payload.length());
-
-    socket_send_msg(conn, msg);
-    delete[] msg.data;
 }
 
 void master_start(socket_int_t socket) {
     std::cout << "Master mode" << std::endl;
     std::cout << "Listen port " << port_server << std::endl;
     auto parser = select_parser(nullptr);
-    std::fstream tmpfile(output_file.string() + ".tmp", std::ios::app | std::ios::ate | std::ios::binary);
+    std::fstream tmpfile(output_file.string() + ".tmp", ioflags | std::ios::trunc);
 
     // Загружаем вектора
     parser->get_vectors();
@@ -165,8 +157,10 @@ void master_start(socket_int_t socket) {
                 break;
             }
             case msg_types::CLIENT_DATA: {
-                for (size_t i = 0; i < msg.len; i++) tmpfile << msg.data[i];
+                const auto a = tmpfile.tellp();
+                tmpfile.write(msg.data, msg.len);
                 tmpfile.flush();
+                std::cout << "server debug: wrote " << tmpfile.tellp() - a << " bytes" << std::endl;
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {
@@ -186,6 +180,6 @@ void master_start(socket_int_t socket) {
     // Сохраняем файл
     tmpfile.close();
     auto saver = select_saver(nullptr);
-    saver->save_final();
-    saver->convert_ids();
+    saver->compress();
+    saver->finalize();
 }

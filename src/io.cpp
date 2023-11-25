@@ -132,21 +132,29 @@ bool reader_argos::have_triangles() const {
 saver_base::saver_base() {
     tmp_path = output_file.string() + ".tmp";
     final_path = output_file.string() + ".tmp-final";
+
+    auto flags_tmp = ioflags;
+    if (!std::filesystem::exists(tmp_path)) flags_tmp |= std::ios::trunc;
+    tmp_file.open(tmp_path, flags_tmp);
+    if (!tmp_file.good()) throw std::runtime_error("saver: Failed to open file " + tmp_path);
+
+    auto flags_final = ioflags;
+    if (!std::filesystem::exists(final_path)) flags_final |= std::ios::trunc;
+    final_file.open(final_path, flags_final);
+    if (!final_file.good()) throw std::runtime_error("saver: Failed to open file " + final_path);
 }
 
-saver_file::saver_file() : saver_base() {
-    tmp_file.open(tmp_path, std::ios::app | std::ios::ate | std::ios::binary);
-    if (!tmp_file.good()) throw std::runtime_error("saver: Failed to open file " + tmp_path + ".tmp");
-}
+saver_base::~saver_base() {
+    tmp_file.close();
+    final_file.close();
 
-saver_file::~saver_file() {
     if (!keep_tmp) {
         std::filesystem::remove(tmp_path);
         std::filesystem::remove(final_path);
     }
 }
 
-void saver_file::save_tmp(volatile char** mat, const unsigned int count) {
+void saver_base::save(volatile char** mat, const unsigned int count) {
     const size_t vec_count = vectors.size();
     // Для каждого вектора указываем 
     for (size_t vec = 0; vec < vec_count; vec++) {
@@ -163,18 +171,16 @@ void saver_file::save_tmp(volatile char** mat, const unsigned int count) {
     tmp_file.flush();
 }
 
-void saver_file::save_final() {
+void saver_base::compress() {
     std::cout << "Compressing output..." << std::endl;
-    std::ifstream base(tmp_path); // Выходной файл до сжатия
-    if (!base.good()) throw std::runtime_error("save_final: failed to open " + tmp_path);
-    std::ofstream out(final_path); // Выходной файл после сжатия
-    if (!out.good()) throw std::runtime_error("save_final: failed to open " + final_path);
+    reset_file(tmp_file);
+    reset_file(final_file);
 
     std::map<size_t, std::set<size_t>> data; // Словарь векторов и треугольников
-    while (!base.eof()) {
+    while (!tmp_file.eof()) {
         std::string buf;
-        std::getline(base, buf);
-        if (buf.empty() || base.eof()) break;
+        std::getline(tmp_file, buf);
+        if (buf.empty() || tmp_file.eof()) break;
 
         // Получаем вектор
         const auto split = buf.find(':');
@@ -190,40 +196,41 @@ void saver_file::save_final() {
     for (auto &[vec, tr] : data) {
         if (tr.empty()) continue; // Не записываем вектора, не попавшие по треугольникам
 
-        out << vec << ':';
+        final_file << vec << ':';
         for (auto &j : tr)
-            out << j << " ";
-        out << '\n';
+            final_file << j << " ";
+        final_file << '\n';
     }
-    base.close();
-    out.close();
 
     const auto pre_size = std::filesystem::file_size(tmp_path);
     const auto post_size = std::filesystem::file_size(final_path);
     const double diff = (double)post_size / (double)pre_size * 100;
 
-    std::cout << "save_final: compressed bytes: " << pre_size << "->" << post_size << " (" << diff << "%)" << std::endl;
+    std::cout << "compress: compressed bytes: " << pre_size << "->" << post_size << " (" << diff << "%)" << std::endl;
 }
 
-void saver_file::convert_ids() {
+void saver_base::reset_file(std::fstream& file) {
+    file.seekg(0);
+    file.seekp(0);
+    file.clear();
+}
+
+void saver_local::finalize() {
     std::cout << "Converting ids, this will take time..." << std::endl;
-    // save_final сохраняет результаты в виде id векторов и треугольников.
-    // convert_ids должен перевести их в сами вектора и треугольники
+    // compress сохраняет результаты в виде id векторов и треугольников.
+    // finalize должен перевести их в сами вектора и треугольники
     auto ref = select_parser(nullptr);
-
-    std::ifstream base(final_path); // Выходной файл до сжатия
-    if (!base.good()) throw std::runtime_error("convert_ids: failed to open " + final_path);
-
-    std::ofstream out(output_file); // Выходной файл после сжатия
-    if (!out.good()) throw std::runtime_error("convert_ids: failed to open " + output_file.string());
+    reset_file(final_file);
+    std::fstream out(output_file, std::ios::out);
+    if (!out.good()) throw std::runtime_error("finalize: Failed to open file " + output_file.string());
 
     // Кэш треугольников
     std::map<size_t, std::string> map;
 
-    while (!base.eof()) {
+    while (!final_file.eof()) {
         std::string buf;
-        std::getline(base, buf);
-        if (buf.empty() || base.eof()) break;
+        std::getline(final_file, buf);
+        if (buf.empty() || final_file.eof()) break;
 
         // Получаем вектор
         const auto split = buf.find(':');
@@ -245,6 +252,4 @@ void saver_file::convert_ids() {
         out_line.pop_back();
         out << out_line << '\n';
     }
-    out.close();
-    base.close();
 }

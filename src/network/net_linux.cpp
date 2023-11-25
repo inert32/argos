@@ -96,8 +96,6 @@ bool socket_get_msg(socket_int_t s, net_msg* ret) {
     if (bytes_got < ret->len)
         std::cout << "get_msg: incomplete message got: " << bytes_got << " of " << ret->len << std::endl;
 
-    std::cout << "get_msg: Checksum: " << calc_checksum(*ret) << std::endl;
-
     return true;
 }
 
@@ -109,8 +107,6 @@ bool socket_send_msg(socket_int_t s, const net_msg& msg) {
 
     char* msg_raw = new char[raw_len];
     std::memcpy(msg_raw, &head, sizeof(header_t));
-
-    std::cout << "send_msg: Checksum: " << calc_checksum(msg) << std::endl;
 
     std::memcpy(&msg_raw[sizeof(header_t)], msg.data, msg.len);
 

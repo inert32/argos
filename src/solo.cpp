@@ -150,7 +150,7 @@ void solo_start(socket_int_t* socket) {
             }
 
             // Сохраняем
-            s->save_tmp(ans_matr, count);
+            s->save(ans_matr, count);
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
@@ -164,9 +164,9 @@ void solo_start(socket_int_t* socket) {
         delete[] ans_matr;
         // При количестве треугольников больше чем chunks_elements
         // вектора в выходном файле будут повторяться. Исправляем.
-        s->save_final();
+        s->compress();
         // Переводим идентификаторы векторов и треугольников в координаты
-        s->convert_ids();
+        s->finalize();
     }
     catch (const std::runtime_error& e) {
         std::cerr << "err: " << e.what() << std::endl;

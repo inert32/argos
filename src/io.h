@@ -51,43 +51,41 @@ private:
 class saver_base {
 public:
     saver_base();
-    ~saver_base() = default;
+    ~saver_base();
 
     // Сохранение чанка данных
-    virtual void save_tmp(volatile char** mat, const unsigned int count) = 0;
+    void save(volatile char** mat, const unsigned int count);
 
-    // Объединение временного файла в выходной файл
-    virtual void save_final() = 0;
+    // Объединение временного файла
+    void compress();
 
-    // Перевод идентификаторов в треугольники и векторы
-    virtual void convert_ids() = 0;
+    virtual void finalize() = 0;
 
 protected:
+    void reset_file(std::fstream& file);
+    // Временный файл до удаления дубликатов
     std::string tmp_path;
+    std::fstream tmp_file;
+
+    // Временный файл после объединения
     std::string final_path;
+    std::fstream final_file;
 };
 
 // Сохранение результатов в файл
-class saver_file : public saver_base {
+class saver_local : public saver_base {
 public:
-    saver_file();
-    ~saver_file();
-
-    void save_tmp(volatile char** mat, const unsigned int count);
-    void save_final();
-
-    void convert_ids();
-private:
-    std::fstream tmp_file;
+    // Перевод идентификаторов в треугольники и векторы
+    void finalize();
 };
 
 class saver_dummy : public saver_base {
 public:
     saver_dummy() = default;
 
-    void save_tmp([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
-    void save_final() {}
-    void convert_ids() {}
+    void save([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
+    void compress() {}
+    void finalize() {}
 };
 
 // Выбор парсера в зависимости от режима работы и типа файла
@@ -98,5 +96,8 @@ saver_base* select_saver(socket_int_t* s);
 
 // Перевод str -> std::set
 std::set<size_t> clear_repeats(const std::string& str);
+
+// Флаги для std::fstream
+constexpr auto ioflags = std::ios::in | std::ios::out | std::ios::binary;
 
 #endif /* __IO_H__ */
