@@ -12,7 +12,7 @@
 // Класс загрузки файла вершин по сети
 class reader_network : public reader_base {
 public:
-    reader_network(const socket_int_t s);
+    reader_network(socket_t* s);
     ~reader_network() = default;
 
     bool get_next_triangle(triangle* ret);
@@ -21,21 +21,21 @@ public:
 
     bool have_triangles() const;
 private:
-    socket_int_t conn;
+    socket_t* conn;
     bool server_have_triangles = true;
 };
 
 // Класс передачи результатов серверу
 class saver_network : public saver_base {
 public:
-    saver_network(const socket_int_t s);
+    saver_network(socket_t* s);
     ~saver_network();
 
     void finalize();
 private:
-    socket_int_t conn;
+    socket_t* conn;
 };
 
-void master_start(socket_int_t socket);
+void master_start(socket_t* socket);
 
 #endif /* __NET_H__ */

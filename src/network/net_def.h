@@ -77,4 +77,6 @@ typedef int socket_int_t;
 typedef SOCKET socket_int_t;
 #endif /*__linux__*/
 
+class socket_t;
+
 #endif /* __NET_DEF_H__ */

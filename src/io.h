@@ -89,10 +89,10 @@ public:
 };
 
 // Выбор парсера в зависимости от режима работы и типа файла
-reader_base* select_parser(socket_int_t* s);
+reader_base* select_parser(socket_t* s);
 
 // Выбор класса saver в зависимости от режима работы
-saver_base* select_saver(socket_int_t* s);
+saver_base* select_saver(socket_t* s);
 
 // Перевод str -> std::set
 std::set<size_t> clear_repeats(const std::string& str);

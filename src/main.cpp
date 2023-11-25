@@ -11,10 +11,10 @@
 #include "net.h"
 
 // Начало работы в одиночном режиме
-void solo_start(socket_int_t* socket);
+void solo_start(socket_t* socket);
 
-reader_base* select_parser(socket_int_t* s) {
-    if (s != nullptr) return new reader_network(*s);
+reader_base* select_parser(socket_t* s) {
+    if (s != nullptr) return new reader_network(s);
 
     std::ifstream file(verticies_file, std::ios::binary);
     if (!file.good()) throw std::runtime_error("select_parser: Failed to open file " + verticies_file.string());
@@ -30,8 +30,8 @@ reader_base* select_parser(socket_int_t* s) {
         throw std::runtime_error("select_parser: " + verticies_file.string() + ": unknown format.");
 }
 
-saver_base* select_saver(socket_int_t* s) {
-    if (s != nullptr) return new saver_network(*s);
+saver_base* select_saver(socket_t* s) {
+    if (s != nullptr) return new saver_network(s);
 
     return new saver_local();
 }
@@ -125,19 +125,19 @@ int main(int argc, char** argv) {
     try {
         init_network();
         if (master_mode) { // Режим мастер-сервера
-            socket_int_t sock = socket_setup();
-            master_start(sock);
-            socket_close(sock);
+            socket_t sock;
+            master_start(&sock);
+            sock.kill();
         }
         else {
             threads_count_setup();
             std::cout << "Using " << threads_count << " worker threads." << std::endl;
 
             if (master_addr) { // Режим клиента
-                socket_int_t sock = socket_setup();
+                socket_t sock;
                 solo_start(&sock);
-                socket_send_msg(sock, msg_types::CLIENT_DISCONNECT);
-                socket_close(sock);
+                sock.send_msg(msg_types::CLIENT_DISCONNECT);
+                sock.kill();
             }
             else solo_start(nullptr); // Одиночный режим
         }

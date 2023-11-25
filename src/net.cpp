@@ -9,7 +9,7 @@
 #include "th_queue.h"
 #include "net.h"
 
-reader_network::reader_network(socket_int_t s) : reader_base() {
+reader_network::reader_network(socket_t* s) : reader_base() {
     std::cout << "Connected to: " << master_addr << std::endl;
     conn = s;
 }
@@ -17,9 +17,9 @@ reader_network::reader_network(socket_int_t s) : reader_base() {
 bool reader_network::get_next_triangle(triangle* ret) {
     if (!server_have_triangles) return false;
     net_msg ans;
-    socket_send_msg(conn, msg_types::CLIENT_GET_TRIANGLE);
+    conn->send_msg(msg_types::CLIENT_GET_TRIANGLE);
 
-    bool ok = socket_get_msg(conn, &ans);
+    bool ok = conn->get_msg(&ans);
     if (!ok || ans.type != msg_types::SERVER_DATA) {
         server_have_triangles = false;
         return false;
@@ -39,18 +39,18 @@ bool reader_network::get_next_triangle(triangle* ret) {
     return true;
 }
 
-// Клиент не должен просить определенные треугольники, это необходимо
-// только на этапе saver_base::convert_ids()
+// Клиент не должен просить определенные треугольники,
+// это необходимо только saver_base::finalize()
 bool reader_network::get_triangle([[maybe_unused]] triangle* ret, [[maybe_unused]] const size_t id) {
     return false;
 }
 
 void reader_network::get_vectors() {
     net_msg ans;
-    socket_send_msg(conn, msg_types::CLIENT_GET_VECTORS);
+    conn->send_msg(msg_types::CLIENT_GET_VECTORS);
 
-    bool ok = socket_get_msg(conn, &ans);
-    if (!ok || ans.type != msg_types::SERVER_DATA) return; // Получен большой массив векторов
+    bool ok = conn->get_msg(&ans);
+    if (!ok || ans.type != msg_types::SERVER_DATA) return;
     vectors.clear();
 
     size_t offset = 0;
@@ -70,7 +70,7 @@ bool reader_network::have_triangles() const {
     return server_have_triangles;
 }
 
-saver_network::saver_network(socket_int_t s) : saver_base() {
+saver_network::saver_network(socket_t* s) : saver_base() {
     conn = s;
 }
 
@@ -86,11 +86,11 @@ void saver_network::finalize() {
         msg.len = final_file.gcount();
         msg.data = line;
 
-        socket_send_msg(conn, msg);
+        conn->send_msg(msg);
     }
 }
 
-void master_start(socket_int_t socket) {
+void master_start(socket_t* socket) {
     std::cout << "Master mode" << std::endl;
     std::cout << "Listen port " << port_server << std::endl;
     auto parser = select_parser(nullptr);
@@ -131,14 +131,14 @@ void master_start(socket_int_t socket) {
                 ans.data = vectors_array;
                 ans.len = vectors_array_size;
 
-                socket_send_msg(send_to, ans);
+                send_to.send_msg(ans);
                 break;
             }
             case msg_types::CLIENT_GET_TRIANGLE: {
                 triangle ret;
                 bool ok = parser->get_next_triangle(&ret);
                 if (!ok) {
-                    socket_send_msg(send_to, msg_types::SERVER_DATA);
+                    send_to.send_msg(msg_types::SERVER_DATA);
                     break;
                 }
                 ret.id = triangle_id++;
@@ -147,7 +147,7 @@ void master_start(socket_int_t socket) {
                 ans.len = triangle::size;
                 ans.data = ret.to_char();
 
-                socket_send_msg(send_to, ans);
+                send_to.send_msg(ans);
                 break;
             }
             case msg_types::CLIENT_DATA: {
@@ -160,7 +160,7 @@ void master_start(socket_int_t socket) {
                 break;
             }
             default: {
-                socket_send_msg(send_to, msg_types::BOTH_UNKNOWN);
+                send_to.send_msg(msg_types::BOTH_UNKNOWN);
                 break;
             }
         }

@@ -33,8 +33,8 @@ ipv4_t::ipv4_t(const sockaddr src) {
     if (addr_raw != nullptr) std::memcpy(ip, addr_raw, ipv4_ip_len);
 }
 
-socket_int_t socket_setup() {
-    socket_int_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+socket_t::socket_t() {
+    s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s < 0) throw_err("Socket error");
 
     sockaddr_in addr;
@@ -53,25 +53,17 @@ socket_int_t socket_setup() {
         if (connect(s, (sockaddr *)&addr, sizeof(addr)) < 0) throw_err("Connect error");
 
         net_msg check;
-        bool ok = socket_get_msg(s, &check);
+        bool ok = get_msg(&check);
         if (!ok || check.type != msg_types::SERVER_CLIENT_ACCEPT)
             throw std::runtime_error("Connect error: server declined connection.");
     }
-    return s;
 }
 
-void socket_close(socket_int_t s) {
-    close(s);
+socket_t::socket_t(const socket_int_t old) {
+    s = old;
 }
 
-bool socket_online(socket_int_t s) {
-    char c;
-    auto l = recv(s, &c, sizeof(char), MSG_PEEK);
-
-    return (l > 0 || (errno == EAGAIN || errno == EWOULDBLOCK)) ? true : false;
-}
-
-bool socket_get_msg(socket_int_t s, net_msg* ret) {
+bool socket_t::get_msg(net_msg* ret) {
     header_t head;
     auto l = recv(s, &head, sizeof(header_t), 0);
     if (l < (signed)sizeof(header_t)) return false;
@@ -107,7 +99,7 @@ bool socket_get_msg(socket_int_t s, net_msg* ret) {
     return true;
 }
 
-bool socket_send_msg(socket_int_t s, const net_msg& msg) {
+bool socket_t::send_msg(const net_msg& msg) {
     header_t head;
     head.type = msg.type;
     head.raw_len += msg.len;
@@ -137,7 +129,7 @@ bool socket_send_msg(socket_int_t s, const net_msg& msg) {
     return true;
 }
 
-bool socket_send_msg(socket_int_t s, const msg_types msg) {
+bool socket_t::send_msg(const msg_types msg) {
     header_t head;
     head.type = msg;
 
@@ -148,42 +140,34 @@ bool socket_send_msg(socket_int_t s, const msg_types msg) {
     return true;
 }
 
-void socket_set_nonblock(const socket_int_t s) {
+bool socket_t::is_online() const {
+    char c;
+    auto l = recv(s, &c, sizeof(char), MSG_PEEK);
+
+    return (l > 0 || (errno == EAGAIN || errno == EWOULDBLOCK)) ? true : false;
+}
+
+void socket_t::set_nonblock() {
     fcntl(s, F_SETFL, O_NONBLOCK);
 }
 
-void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
-    netd_started = true;
-    sockaddr addr;
-    socklen_t len = sizeof(sockaddr);
+socket_int_t socket_t::raw() {
+    return s;
+}
 
-    while (*run == true) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-        socket_int_t try_accept = accept(sock_in, &addr, &len);
-        if (try_accept > 0) {
-            if (clients->try_add(try_accept)) {
-                std::cout << "Accepted client " << ipv4_t(addr) << std::endl;
-                socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
-            }
-            else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
-        }
-        if (clients->count() < clients_min) continue;
+socket_t* socket_t::accept_conn(ipv4_t* who) {
+    sockaddr addr; socklen_t len = sizeof(sockaddr);
 
-        for (size_t i = 0; i < clients_max; i++) {
-            auto c = clients->get(i);
-            if (c == nullptr) continue;
-            if (!socket_online(*c)) {
-                clients->remove(i);
-                continue;
-            }
-
-            net_msg ret;
-            if (!socket_get_msg(*c, &ret)) continue;
-            ret.peer_id = i;
-            queue->add(ret);
-        }
+    auto try_accept = accept(s, &addr, &len);
+    if (try_accept > 0) {
+        if (who != nullptr) *who = ipv4_t(addr);
+        return new socket_t(try_accept);
     }
-    netd_started = false;
+    else return nullptr;
+}
+
+void socket_t::kill() {
+    close(s);
 }
 
 #endif /* __linux__ */

@@ -45,16 +45,15 @@ void shutdown_network() {
     if (!(master_mode || master_addr)) WSACleanup();
 }
 
-socket_int_t socket_setup() {
-    socket_int_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+socket_t::socket_t() {
+    s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s == INVALID_SOCKET) throw_err("Socket error");
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
 
     if (master_mode) {
-        u_long mode = 1;
-        ioctlsocket(s, FIONBIO, &mode);
+        set_nonblocking();
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port=htons(port_server);
         if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) throw_err("Bind error");
@@ -66,24 +65,48 @@ socket_int_t socket_setup() {
         if (connect(s, (sockaddr *)&addr, sizeof(addr)) < 0) throw_err("Connect error");
 
         net_msg check;
-        bool ok = socket_get_msg(s, &check);
+        bool ok = s->get_msg(&check);
         if (!ok || check.type != msg_types::SERVER_CLIENT_ACCEPT)
             throw std::runtime_error("Connect error: server declined connection.");
     }
     return s;
 }
 
-void socket_close(socket_int_t s) {
+socket_t::socket_t(const socket_int_t old) {
+    s = old;
+}
+
+socket_int_t socket_t::kill() {
     closesocket(s);
 }
 
-bool socket_online(socket_int_t s) {
+bool socket_t::is_online() const {
     char c;
     auto l = recv(s, &c, sizeof(char), MSG_PEEK);
+
     return (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) ? false : true;
 }
 
-bool socket_get_msg(socket_int_t s, net_msg* ret) {
+void socket_t::set_nonblock() {
+    fcntl(s, F_SETFL, O_NONBLOCK);
+}
+
+socket_int_t socket_t::raw() {
+    return s;
+}
+
+socket_t* socket_t::accept_conn(ipv4_t* who) {
+    sockaddr addr; socklen_t len = sizeof(sockaddr);
+
+    auto try_accept = accept(s, &addr, &len);
+    if (try_accept > 0) {
+        if (who != nullptr) *who = ipv4_t(addr);
+        return new socket_t(try_accept);
+    }
+    else return nullptr;
+}
+
+bool socket_t::get_msg(net_msg* ret) {
     header_t head;
     auto l = recv(s, (char*)&head, sizeof(header_t), 0);
     if (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) {
@@ -125,7 +148,7 @@ bool socket_get_msg(socket_int_t s, net_msg* ret) {
     return true;
 }
 
-bool socket_send_msg(socket_int_t s, const net_msg& msg) {
+bool socket_t::send_msg(const net_msg& msg) {
     header_t head;
     head.type = msg.type;
     head.raw_len += msg.len;
@@ -154,7 +177,7 @@ bool socket_send_msg(socket_int_t s, const net_msg& msg) {
     return true;
 }
 
-bool socket_send_msg(socket_int_t s, const msg_types msg) {
+bool socket_t::send_msg(const msg_types msg) {
     header_t head;
     head.type = msg;
 
@@ -165,40 +188,9 @@ bool socket_send_msg(socket_int_t s, const msg_types msg) {
     return true;
 }
 
-void socket_set_nonblock(const socket_int_t s) {
+void socket_t::set_nonblock() {
     u_long mode = 1;
     ioctlsocket(s, FIONBIO, &mode);
-}
-
-void netd_server(socket_int_t sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
-    netd_started = true;
-    sockaddr addr;
-    socklen_t len = sizeof(sockaddr);
-
-    while (*run == true) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-        socket_int_t try_accept = accept(sock_in, &addr, &len);
-        if (try_accept != INVALID_SOCKET) {
-            if (clients->try_add(try_accept)) socket_send_msg(try_accept, msg_types::SERVER_CLIENT_ACCEPT);
-            else socket_send_msg(try_accept, msg_types::SERVER_CLIENT_NOT_ACCEPT);
-        }
-        if (clients->count() < clients_min) continue;
-
-        for (size_t i = 0; i < clients_max; i++) {
-            auto c = clients->get(i);
-            if (c == nullptr) continue;
-            if (!socket_online(*c)) {
-                clients->remove(i);
-                continue;
-            }
-
-            net_msg ret;
-            if (!socket_get_msg(*c, &ret)) continue;
-            ret.peer_id = i;
-            queue->add(ret);
-        }
-    }
-    netd_started = false;
 }
 
 #endif /* _WIN32 */

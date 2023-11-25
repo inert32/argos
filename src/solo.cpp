@@ -80,7 +80,7 @@ bool check_matr(volatile char** mat, size_t* ind) {
     return ret;
 }
 
-void solo_start(socket_int_t* socket) {
+void solo_start(socket_t* socket) {
     try {
         if (socket != nullptr) std::cout << "Client mode" << std::endl;
         else std::cout << "Solo mode" << std::endl;
