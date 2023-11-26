@@ -44,22 +44,29 @@ size_t clients_list::count() const {
     return clients_count;
 }
 
-std::vector<size_t> clients_list::poll_sockets() const {
+std::vector<size_t> clients_list::poll_sockets(socket_t* conn_socket, bool* new_client) const {
     // Используем poll для опроса сокетов
-    pollfd* poll_list = new pollfd[clients_count];
+    const auto size = clients_count + 1;
+    pollfd* poll_list = new pollfd[size];
 
+    // Отдельно обрабатываем слушающий сокет
     size_t ind = 0;
+    poll_list[ind].fd = conn_socket->raw();
+    poll_list[ind++].events = POLLIN;
     for (auto &i : list) {
         poll_list[ind].fd = i->raw();
         poll_list[ind++].events = POLLIN;
     }
-    auto poll_ret = poll(poll_list, clients_count, 1000);
+    // Ждем секунду
+    auto poll_ret = poll(poll_list, size, 1000);
 
     std::vector<size_t> ret;
     if (poll_ret == -1) std::cerr << "netd: poll error: " << errno << std::endl;
-    if (poll_ret > 0)
+    if (poll_ret > 0) {
+        if (poll_list[0].revents & POLLIN) *new_client = true;
         for (size_t i = 0; i < clients_count; i++)
-            if (poll_list[i].revents & POLLIN) ret.push_back(i);
+            if (poll_list[i + 1].revents & POLLIN) ret.push_back(i);
+    }
 
     delete[] poll_list;
     return ret;
@@ -79,18 +86,25 @@ void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* qu
     netd_started = true;
 
     while (*run == true) {
-        ipv4_t client_data;
-        auto try_accept = sock_in->accept_conn(&client_data);
-        if (try_accept != nullptr) {
-            if (clients->try_add(try_accept)) {
-                std::cout << "Accepted client " << client_data << std::endl;
-                try_accept->send_msg(msg_types::SERVER_CLIENT_ACCEPT);
+        bool incoming = false;
+        auto cl = clients->poll_sockets(sock_in, &incoming);
+
+        // Подключение нового клиента
+        if (incoming) {
+            ipv4_t client_data;
+            auto try_accept = sock_in->accept_conn(&client_data);
+            if (try_accept != nullptr) {
+                if (clients->try_add(try_accept)) {
+                    std::cout << "Accepted client " << client_data << std::endl;
+                    try_accept->send_msg(msg_types::SERVER_CLIENT_ACCEPT);
+                }
+                else try_accept->send_msg(msg_types::SERVER_CLIENT_NOT_ACCEPT);
             }
-            else try_accept->send_msg(msg_types::SERVER_CLIENT_NOT_ACCEPT);
         }
+        
         if (clients->count() < clients_min) continue;
 
-        auto cl = clients->poll_sockets();
+        // Добавляем запросы подключенных клиентов в очередь
         for (auto &i : cl) {
             auto c = clients->get(i);
             if (!(c->is_online())) {
