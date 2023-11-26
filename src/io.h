@@ -6,7 +6,6 @@
 */
 
 #include <fstream>
-#include <filesystem>
 #include <set>
 #include "base.h"
 #include "network/net_def.h"

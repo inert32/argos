@@ -3,10 +3,8 @@
 
 #include <iostream>
 #include <thread>
-#include <array>
 
 #include "settings.h"
-#include "th_queue.h"
 #include "net.h"
 
 reader_network::reader_network(socket_t* s) : reader_base() {

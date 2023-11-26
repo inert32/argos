@@ -2,6 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 
 #include <thread>
+#include <iostream>
 
 #ifdef __linux__
 #include <sys/poll.h>
@@ -58,7 +59,7 @@ std::vector<size_t> clients_list::poll_sockets(socket_t* conn_socket, bool* new_
         poll_list[ind++].events = POLLIN;
     }
     // Ждем секунду
-    auto poll_ret = poll(poll_list, size, 1000);
+    auto poll_ret = poll(poll_list, size, 10000);
 
     std::vector<size_t> ret;
     if (poll_ret == -1) std::cerr << "netd: poll error: " << errno << std::endl;

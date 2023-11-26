@@ -4,7 +4,6 @@
 #include <iostream>
 #include <map>
 #include "settings.h"
-#include "point.h"
 #include "base.h"
 #include "io.h"
 

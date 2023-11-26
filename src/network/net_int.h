@@ -5,9 +5,15 @@
     Внутренние функции работы с сетью
 */
 
-#include <iostream>
 #include "net_def.h"
 #include "../th_queue.h"
+
+#ifdef __linux__
+typedef int socket_int_t;
+#elif _WIN32
+#include <WinSock2.h>
+typedef SOCKET socket_int_t;
+#endif /*__linux__*/
 
 struct header_t {
     size_t raw_len = sizeof(header_t);

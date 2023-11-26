@@ -9,7 +9,6 @@
 #include "th_queue.h"
 #include "base.h"
 #include "io.h"
-#include "net.h"
 
 constexpr float EPS = 1e-6;
 

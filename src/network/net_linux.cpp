@@ -3,7 +3,6 @@
 
 #ifdef __linux__
 
-#include <stdexcept>
 #include <vector>
 #include <thread>
 #include <iostream>
@@ -14,7 +13,6 @@
 #include "unistd.h"
 
 #include "../settings.h"
-#include "net_def.h"
 #include "net_int.h"
 
 bool netd_started = false;

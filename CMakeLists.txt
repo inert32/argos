@@ -12,7 +12,7 @@ src/main.cpp src/solo.cpp src/io.cpp src/net.cpp
 src/network/net_linux.cpp src/network/net_win.cpp
 src/network/net_int.cpp src/settings.cpp
 
-src/settings.h src/base.h src/point.h src/th_queue.h src/io.h
+src/settings.h src/base.h src/th_queue.h src/io.h
 src/net.h src/network/net_def.h src/network/net_int.h)
 
 target_compile_features(argos PUBLIC cxx_std_17)

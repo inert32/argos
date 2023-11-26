@@ -3,7 +3,6 @@
 
 #ifdef _WIN32
 
-#include <stdexcept>
 #include <vector>
 #include <thread>
 #include <iostream>
@@ -11,7 +10,6 @@
 #include <WinSock2.h>
 
 #include "../settings.h"
-#include "net_def.h"
 #include "net_int.h"
 
 bool netd_started = false;
