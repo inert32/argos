@@ -2,48 +2,67 @@
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 
 #include <thread>
+
+#ifdef __linux__
+#include <sys/poll.h>
+#elif _WIN32
+#include <WinSock2.h>
+#endif
+
 #include "../settings.h"
 #include "net_int.h"
 
-size_t clients_now = 0;
-
 clients_list::clients_list() {
     list.reserve(clients_max);
-    for (size_t i = 0; i < clients_max; i++) list.push_back(nullptr);
 }
 
 clients_list::~clients_list() {
-    for (size_t i = 0; i < clients_max; i++)
-        if (list[i] != nullptr) list[i]->kill();
+    for (auto &i : list) i->kill();
 }
 
 bool clients_list::try_add(socket_t* s) {
     if (clients_count == clients_max) return false;
-    for (size_t i = 0; i < clients_max; i++) 
-        if (list[i] == nullptr) {
-            list[i] = std::move(s);
-            list[i]->set_nonblock();
-            
-            clients_count++;
-            wait_for_clients = false;
-            return true;
-        }
-    return false;
+
+    list.push_back(s);
+    list.back()->set_nonblock();
+    clients_count++;
+    wait_for_clients = false;
+    return true;
 }
 
 void clients_list::remove(const size_t id) {
     list[id]->kill();
-    list[id] = nullptr;
+    list.erase(list.begin() + id);
     clients_count--;
 }
 
 socket_t* clients_list::get(const size_t id) const {
-    if (id >= list.size()) return nullptr;
     return list[id];
 }
 
 size_t clients_list::count() const {
     return clients_count;
+}
+
+std::vector<size_t> clients_list::poll_sockets() const {
+    // Используем poll для опроса сокетов
+    pollfd* poll_list = new pollfd[clients_count];
+
+    size_t ind = 0;
+    for (auto &i : list) {
+        poll_list[ind].fd = i->raw();
+        poll_list[ind++].events = POLLIN;
+    }
+    auto poll_ret = poll(poll_list, clients_count, 1000);
+
+    std::vector<size_t> ret;
+    if (poll_ret == -1) std::cerr << "netd: poll error: " << errno << std::endl;
+    if (poll_ret > 0)
+        for (size_t i = 0; i < clients_count; i++)
+            if (poll_list[i].revents & POLLIN) ret.push_back(i);
+
+    delete[] poll_list;
+    return ret;
 }
 
 bool clients_list::run_server() const {
@@ -60,8 +79,6 @@ void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* qu
     netd_started = true;
 
     while (*run == true) {
-        std::this_thread::sleep_for(std::chrono::microseconds(50));
-
         ipv4_t client_data;
         auto try_accept = sock_in->accept_conn(&client_data);
         if (try_accept != nullptr) {
@@ -73,9 +90,9 @@ void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* qu
         }
         if (clients->count() < clients_min) continue;
 
-        for (size_t i = 0; i < clients_max; i++) {
+        auto cl = clients->poll_sockets();
+        for (auto &i : cl) {
             auto c = clients->get(i);
-            if (c == nullptr) continue;
             if (!(c->is_online())) {
                 clients->remove(i);
                 continue;

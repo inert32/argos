@@ -6,7 +6,6 @@
 */
 
 #include <iostream>
-#include <execinfo.h>
 #include "net_def.h"
 #include "../th_queue.h"
 
@@ -24,6 +23,7 @@ public:
     void remove(const size_t id);
     socket_t* get(const size_t id) const;
     size_t count() const;
+    std::vector<size_t> poll_sockets() const;
 
     bool run_server() const;
 private:
