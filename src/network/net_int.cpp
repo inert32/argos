@@ -14,63 +14,53 @@
 #include "net_int.h"
 
 clients_list::clients_list() {
-    list.reserve(clients_max);
+    for (size_t i = 0; i < clients_max; i++)
+        list.push_back(nullptr);
 }
 
 clients_list::~clients_list() {
-    for (auto &i : list) i->kill();
+    for (auto &i : list) if (i != nullptr) i->kill();
 }
 
 bool clients_list::try_add(socket_t* s) {
     if (clients_count == clients_max) return false;
 
-    list.push_back(s);
-    list.back()->set_nonblock();
-    clients_count++;
-    wait_for_clients = false;
-    return true;
+    for (size_t i = 0; i < clients_max; i++)
+        if (list[i] == nullptr) {
+            list[i] = s;
+            list[i]->set_nonblock();
+            clients_count++;
+            wait_for_clients = false;
+
+            std::cout << "clients_list status: ";
+            for (size_t j = 0; j < clients_max; j++)
+                std::cout << ((list[j] == nullptr) ? 0 : 1);
+            std::cout << std::endl;
+
+            return true;
+        }
+    return false;
 }
 
 void clients_list::remove(const size_t id) {
     list[id]->kill();
-    list.erase(list.begin() + id);
+    list[id] = nullptr;
+
+    std::cout << "clients_list status: ";
+    for (size_t j = 0; j < clients_max; j++)
+        std::cout << ((list[j] == nullptr) ? 0 : 1);
+    std::cout << std::endl;
+
     clients_count--;
 }
 
 socket_t* clients_list::get(const size_t id) const {
+    if (id >= clients_max) return nullptr;
     return list[id];
 }
 
 size_t clients_list::count() const {
     return clients_count;
-}
-
-std::vector<size_t> clients_list::poll_sockets(socket_t* conn_socket, bool* new_client) const {
-    // Используем poll для опроса сокетов
-    const auto size = clients_count + 1;
-    pollfd* poll_list = new pollfd[size];
-
-    // Отдельно обрабатываем слушающий сокет
-    size_t ind = 0;
-    poll_list[ind].fd = conn_socket->raw();
-    poll_list[ind++].events = POLLIN;
-    for (auto &i : list) {
-        poll_list[ind].fd = i->raw();
-        poll_list[ind++].events = POLLIN;
-    }
-    // Ждем секунду
-    auto poll_ret = poll(poll_list, size, 10000);
-
-    std::vector<size_t> ret;
-    if (poll_ret == -1) std::cerr << "netd: poll error: " << errno << std::endl;
-    if (poll_ret > 0) {
-        if (poll_list[0].revents & POLLIN) *new_client = true;
-        for (size_t i = 0; i < clients_count; i++)
-            if (poll_list[i + 1].revents & POLLIN) ret.push_back(i);
-    }
-
-    delete[] poll_list;
-    return ret;
 }
 
 bool clients_list::run_server() const {
@@ -108,6 +98,7 @@ void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* qu
         // Добавляем запросы подключенных клиентов в очередь
         for (auto &i : cl) {
             auto c = clients->get(i);
+            if (c == nullptr) continue;
             if (!(c->is_online())) {
                 clients->remove(i);
                 continue;

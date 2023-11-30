@@ -67,10 +67,6 @@ extern bool netd_started;
 
 constexpr size_t net_chunk_size = 1024;
 
-// Флаг работы сервера
-// Ждет подключения хотя бы одного клиента, затем отключения всех клиентов
-bool run_server();
-
 bool init_network();
 void shutdown_network();
 

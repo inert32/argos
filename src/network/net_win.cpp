@@ -51,7 +51,7 @@ socket_t::socket_t() {
     addr.sin_family = AF_INET;
 
     if (master_mode) {
-        set_nonblocking();
+        set_nonblock();
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port=htons(port_server);
         if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) throw_err("Bind error");
@@ -63,30 +63,31 @@ socket_t::socket_t() {
         if (connect(s, (sockaddr *)&addr, sizeof(addr)) < 0) throw_err("Connect error");
 
         net_msg check;
-        bool ok = s->get_msg(&check);
+        bool ok = get_msg(&check);
         if (!ok || check.type != msg_types::SERVER_CLIENT_ACCEPT)
             throw std::runtime_error("Connect error: server declined connection.");
     }
-    return s;
 }
 
 socket_t::socket_t(const socket_int_t old) {
     s = old;
 }
 
-socket_int_t socket_t::kill() {
+void socket_t::kill() {
     closesocket(s);
 }
 
 bool socket_t::is_online() const {
     char c;
     auto l = recv(s, &c, sizeof(char), MSG_PEEK);
+    if (l == 0) return false;
 
     return (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) ? false : true;
 }
 
 void socket_t::set_nonblock() {
-    fcntl(s, F_SETFL, O_NONBLOCK);
+    u_long mode = 1;
+    ioctlsocket(s, FIONBIO, &mode);
 }
 
 socket_int_t socket_t::raw() {
@@ -94,7 +95,7 @@ socket_int_t socket_t::raw() {
 }
 
 socket_t* socket_t::accept_conn(ipv4_t* who) {
-    sockaddr addr; socklen_t len = sizeof(sockaddr);
+    sockaddr addr; int len = sizeof(sockaddr);
 
     auto try_accept = accept(s, &addr, &len);
     if (try_accept > 0) {
@@ -186,9 +187,33 @@ bool socket_t::send_msg(const msg_types msg) {
     return true;
 }
 
-void socket_t::set_nonblock() {
-    u_long mode = 1;
-    ioctlsocket(s, FIONBIO, &mode);
+std::vector<size_t> clients_list::poll_sockets(socket_t* conn_socket, bool* new_client) const {
+    // Используем poll для опроса сокетов
+    const auto size = clients_count + 1;
+    pollfd* poll_list = new pollfd[size];
+
+    // Отдельно обрабатываем слушающий сокет
+    size_t ind = 0;
+    poll_list[ind].fd = conn_socket->raw();
+    poll_list[ind++].events = POLLIN;
+    for (auto &i : list) {
+        if (i == nullptr || !i->is_online()) continue;
+        poll_list[ind].fd = i->raw();
+        poll_list[ind++].events = POLLIN;
+    }
+    // Ждем секунду
+    auto poll_ret = WSAPoll(poll_list, size, 10000);
+
+    std::vector<size_t> ret;
+    if (poll_ret == SOCKET_ERROR) std::cout << "netd: poll error: " << WSAGetLastError() << std::endl;
+    if (poll_ret > 0) {
+        if (poll_list[0].revents & POLLIN) *new_client = true;
+        for (size_t i = 0; i < clients_count; i++)
+            if (poll_list[i + 1].revents & POLLIN) ret.push_back(i);
+    }
+
+    delete[] poll_list;
+    return ret;
 }
 
 #endif /* _WIN32 */

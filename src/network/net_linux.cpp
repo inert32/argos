@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include <arpa/inet.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include "unistd.h"
@@ -166,6 +167,34 @@ socket_t* socket_t::accept_conn(ipv4_t* who) {
 
 void socket_t::kill() {
     close(s);
+}
+
+std::vector<size_t> clients_list::poll_sockets(socket_t* conn_socket, bool* new_client) const {
+    // Используем poll для опроса сокетов
+    const auto size = clients_count + 1;
+    pollfd* poll_list = new pollfd[size];
+
+    // Отдельно обрабатываем слушающий сокет
+    size_t ind = 0;
+    poll_list[ind].fd = conn_socket->raw();
+    poll_list[ind++].events = POLLIN;
+    for (auto &i : list) {
+        poll_list[ind].fd = i->raw();
+        poll_list[ind++].events = POLLIN;
+    }
+    // Ждем секунду
+    auto poll_ret = poll(poll_list, size, 10000);
+
+    std::vector<size_t> ret;
+    if (poll_ret == -1) std::cerr << "netd: poll error: " << errno << std::endl;
+    if (poll_ret > 0) {
+        if (poll_list[0].revents & POLLIN) *new_client = true;
+        for (size_t i = 0; i < clients_count; i++)
+            if (poll_list[i + 1].revents & POLLIN) ret.push_back(i);
+    }
+
+    delete[] poll_list;
+    return ret;
 }
 
 #endif /* __linux__ */
