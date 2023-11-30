@@ -166,6 +166,9 @@ void solo_start(socket_t* socket) {
         s->compress();
         // Переводим идентификаторы векторов и треугольников в координаты
         s->finalize();
+
+        delete p;
+        delete s;
     }
     catch (const std::runtime_error& e) {
         std::cerr << "err: " << e.what() << std::endl;

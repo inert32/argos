@@ -151,6 +151,7 @@ void master_start(socket_t* socket) {
             case msg_types::CLIENT_DATA: {
                 tmpfile.write(msg.data, msg.len);
                 tmpfile.flush();
+                delete[] msg.data;
                 break;
             }
             case msg_types::CLIENT_DISCONNECT: {
@@ -172,4 +173,6 @@ void master_start(socket_t* socket) {
     auto saver = select_saver(nullptr);
     saver->compress();
     saver->finalize();
+    delete saver;
+    delete parser;
 }

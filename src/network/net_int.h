@@ -28,13 +28,17 @@ public:
     bool try_add(socket_t* s);
     void remove(const size_t id);
     socket_t* get(const size_t id) const;
+
     size_t count() const;
+    size_t max_count() const;
+
     std::vector<size_t> poll_sockets(socket_t* conn_socket, bool* new_client) const;
 
     bool run_server() const;
 private:
     bool wait_for_clients = true;
     size_t clients_count = 0;
+    size_t max_clients_count = 0;
     std::vector<socket_t*> list;
 };
 

@@ -6,6 +6,7 @@
 #include <vector>
 #include <thread>
 #include <iostream>
+#include <map>
 
 #include <arpa/inet.h>
 #include <sys/poll.h>
@@ -170,30 +171,49 @@ void socket_t::kill() {
 }
 
 std::vector<size_t> clients_list::poll_sockets(socket_t* conn_socket, bool* new_client) const {
-    // Используем poll для опроса сокетов
-    const auto size = clients_count + 1;
-    pollfd* poll_list = new pollfd[size];
+    // Пары дескриптор - id сокета
+    socket_int_t* socket_fd = new socket_int_t[clients_count];
+    size_t* socket_id = new size_t[clients_count];
 
-    // Отдельно обрабатываем слушающий сокет
+    // Заполняем пары
     size_t ind = 0;
-    poll_list[ind].fd = conn_socket->raw();
-    poll_list[ind++].events = POLLIN;
-    for (auto &i : list) {
-        poll_list[ind].fd = i->raw();
-        poll_list[ind++].events = POLLIN;
+    for (size_t i = 0; i < clients_max; i++)
+        if (list[i] != nullptr) {
+            socket_fd[ind] = list[i]->raw();
+            socket_id[ind] = i;
+            ind++;
+        }
+
+    auto poll_size = clients_count + 1;
+    pollfd* poll_list = new pollfd[poll_size];
+
+    // Используем poll() и для слежения за слушающим сокетом
+    poll_list[0].fd = conn_socket->raw();
+    poll_list[0].events = POLLIN;
+
+    for (size_t i = 0; i < clients_count; i++) {
+        poll_list[i + 1].fd = socket_fd[i];
+        poll_list[i + 1].events = POLLIN;
     }
-    // Ждем секунду
-    auto poll_ret = poll(poll_list, size, 10000);
+
+    auto poll_ret = poll(poll_list, poll_size, 1000);
 
     std::vector<size_t> ret;
     if (poll_ret == -1) std::cerr << "netd: poll error: " << errno << std::endl;
+
     if (poll_ret > 0) {
         if (poll_list[0].revents & POLLIN) *new_client = true;
-        for (size_t i = 0; i < clients_count; i++)
-            if (poll_list[i + 1].revents & POLLIN) ret.push_back(i);
+
+        // Ищем сокеты с поступившими данными
+        for (size_t i = 1; i < poll_size; i++)
+            if (poll_list[i].revents & POLLIN) {
+                ret.push_back(socket_id[i - 1]);
+            }
     }
 
     delete[] poll_list;
+    delete[] socket_fd;
+    delete[] socket_id;
     return ret;
 }
 

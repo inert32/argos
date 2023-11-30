@@ -29,13 +29,10 @@ bool clients_list::try_add(socket_t* s) {
         if (list[i] == nullptr) {
             list[i] = s;
             list[i]->set_nonblock();
-            clients_count++;
-            wait_for_clients = false;
 
-            std::cout << "clients_list status: ";
-            for (size_t j = 0; j < clients_max; j++)
-                std::cout << ((list[j] == nullptr) ? 0 : 1);
-            std::cout << std::endl;
+            clients_count++;
+            if (max_clients_count < clients_count) max_clients_count = clients_count;
+            wait_for_clients = false;
 
             return true;
         }
@@ -43,14 +40,7 @@ bool clients_list::try_add(socket_t* s) {
 }
 
 void clients_list::remove(const size_t id) {
-    list[id]->kill();
     list[id] = nullptr;
-
-    std::cout << "clients_list status: ";
-    for (size_t j = 0; j < clients_max; j++)
-        std::cout << ((list[j] == nullptr) ? 0 : 1);
-    std::cout << std::endl;
-
     clients_count--;
 }
 
@@ -61,6 +51,10 @@ socket_t* clients_list::get(const size_t id) const {
 
 size_t clients_list::count() const {
     return clients_count;
+}
+
+size_t clients_list::max_count() const {
+    return max_clients_count;
 }
 
 bool clients_list::run_server() const {
@@ -93,7 +87,7 @@ void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* qu
             }
         }
         
-        if (clients->count() < clients_min) continue;
+        if (clients->max_count() < clients_min) continue;
 
         // Добавляем запросы подключенных клиентов в очередь
         for (auto &i : cl) {

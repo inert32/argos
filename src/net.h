@@ -29,7 +29,7 @@ private:
 class saver_network : public saver_base {
 public:
     saver_network(socket_t* s);
-    ~saver_network();
+    ~saver_network() = default;
 
     void finalize();
 private:

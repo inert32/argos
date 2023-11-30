@@ -16,7 +16,7 @@
 class reader_base {
 public:
     reader_base() = default;
-    ~reader_base() = default;
+    virtual ~reader_base() = default;
 
     // Получение треугольника из файла
     virtual bool get_next_triangle(triangle* ret) = 0;
@@ -50,7 +50,7 @@ private:
 class saver_base {
 public:
     saver_base();
-    ~saver_base();
+    virtual ~saver_base();
 
     // Сохранение чанка данных
     void save(volatile char** mat, const unsigned int count);
@@ -74,17 +74,9 @@ protected:
 // Сохранение результатов в файл
 class saver_local : public saver_base {
 public:
+    saver_local() = default;
     // Перевод идентификаторов в треугольники и векторы
     void finalize();
-};
-
-class saver_dummy : public saver_base {
-public:
-    saver_dummy() = default;
-
-    void save([[maybe_unused]] volatile char** mat, [[maybe_unused]] const unsigned int count) {}
-    void compress() {}
-    void finalize() {}
 };
 
 // Выбор парсера в зависимости от режима работы и типа файла

@@ -9,22 +9,23 @@
 
 std::set<size_t> clear_repeats(const std::string& str) {
     std::set<size_t> ret;
-    size_t space_pos = 0, space_pos_old = 0;
+    size_t space_pos = str.find(' '), space_pos_old = 0;
 
     while (space_pos != std::string::npos) {
-        space_pos = str.find(' ', space_pos_old + 1);
-        if (space_pos == std::string::npos) break;
-
+        while (str[space_pos] == ' ') space_pos++;
         const auto num = str.substr(space_pos_old, space_pos - space_pos_old);
+
         try {
             ret.insert(std::stoul(num));
         }
         catch (const std::exception&) {
-            std::cout << "clear_repeats: failed to process line '" << str << "', raw num: " << num << std::endl;
+            std::cout << "clear_repeats: failed to process raw num, positions: "
+            << space_pos_old << " " << space_pos << ", full len: " << str.length() << std::endl;
             continue;
         }
 
         space_pos_old = space_pos;
+        space_pos = str.find(' ', space_pos_old + 1);
     }
     return ret;
 }
