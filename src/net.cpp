@@ -22,18 +22,10 @@ bool reader_network::get_next_triangle(triangle* ret) {
         server_have_triangles = false;
         return false;
     }
-    if (ans.len < triangle::size) return false; // Данные неполны
+    if (ans.len < sizeof(triangle)) return false; // Данные неполны
 
     // Переводим массив char в triangle
-    size_t offset = 0;
-    ret->A.from_char(&ans.data[offset]);
-    offset+=sizeof(point);
-
-    ret->B.from_char(&ans.data[offset]);
-    offset+=sizeof(point);
-
-    ret->C.from_char(&ans.data[offset]);
-
+    ret->from_char(ans.data);
     return true;
 }
 
@@ -52,14 +44,9 @@ void reader_network::get_vectors() {
     vectors.clear();
 
     size_t offset = 0;
-    size_t id = 0;
     while (offset < ans.len) {
-        point from(&ans.data[offset]);
-        offset+=sizeof(point);
-        point to(&ans.data[offset]);
-        offset+=sizeof(point);
-
-        vectors.push_back({id++, from, to});
+        vectors.emplace_back(&ans.data[offset]);
+        offset+=sizeof(vec3);
     }
     delete[] ans.data;
 }
@@ -96,14 +83,12 @@ void master_start(socket_t* socket) {
 
     // Загружаем вектора
     parser->get_vectors();
-    const auto vectors_array_size = vectors.size() * vec3::size;
+    const auto vectors_array_size = vectors.size() * sizeof(vec3);
     char* vectors_array = new char[vectors_array_size];
     size_t offset = 0;
     for (auto& v : vectors) {
-        auto vec3_raw = v.to_char();
-        std::memcpy(&vectors_array[offset], vec3_raw, vec3::size);
-        delete[] vec3_raw;
-        offset+=vec3::size;
+        std::memcpy(&vectors_array[offset], v.to_char(), sizeof(vec3));
+        offset+=sizeof(vec3);
     }
 
     // Открываем поток приема сообщений
@@ -114,7 +99,6 @@ void master_start(socket_t* socket) {
     while (!netd_started) continue;
 
     std::cout << "Ready." << std::endl;
-    size_t triangle_id = 0;
     while (cl.run_server()) { // Обработка сообщений
         auto x = queue.take();
         if (!x) continue;
@@ -139,10 +123,9 @@ void master_start(socket_t* socket) {
                     send_to.send_msg(msg_types::SERVER_DATA);
                     break;
                 }
-                ret.id = triangle_id++;
                 net_msg ans;
                 ans.type = msg_types::SERVER_DATA;
-                ans.len = triangle::size;
+                ans.len = sizeof(triangle);
                 ans.data = ret.to_char();
 
                 send_to.send_msg(ans);

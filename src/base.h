@@ -102,14 +102,29 @@ public:
 
 class vec3 {
 public:
-    char* to_char() const {
-        char* ret = new char[size];
-        size_t offset = 0;
+    vec3() = default;
+    vec3(const char* src) {
+        conv_t<size_t> conv_id;
+        std::memcpy(conv_id.side1, src, sizeof(size_t));
+        id = conv_id.side2;
 
+        size_t offset = sizeof(size_t);
+        from.from_char(&src[offset]);
+        offset+=sizeof(point);
+        to.from_char(&src[offset]);
+    }
+
+    char* to_char() const {
+        char* ret = new char[sizeof(vec3)];
+
+        conv_t<size_t> conv_id;
+        conv_id.side2 = id;
+        std::memcpy(ret, conv_id.side1, sizeof(size_t));
+
+        size_t offset = sizeof(size_t);
         std::memcpy(&ret[offset], from.to_char(), sizeof(point));
         offset+=sizeof(point);
         std::memcpy(&ret[offset], to.to_char(), sizeof(point));
-
         return ret;
     }
     std::string to_string() const {
@@ -118,24 +133,40 @@ public:
 
     size_t id = 0; // Порядковый номер в файле вершин
     point from, to;
-
-    // id не передается по сети, но влияет на sizeof(), из-за чего
-    // отправлялся буфер неверного размера
-    static constexpr size_t size = 2 * sizeof(point);
 };
 
 class triangle {
 public:
-    char* to_char() {
-        char* ret = new char[size];
-        size_t offset = 0;
+    triangle() = default;
+    triangle(const char* src) {
+        from_char(src);
+    }
+    void from_char(const char* src) {
+        conv_t<size_t> conv_id;
+        std::memcpy(conv_id.side1, src, sizeof(size_t));
+        id = conv_id.side2;
 
+        size_t offset = sizeof(size_t);
+        A.from_char(&src[offset]);
+        offset+=sizeof(point);
+        B.from_char(&src[offset]);
+        offset+=sizeof(point);
+        C.from_char(&src[offset]);
+    }
+
+    char* to_char() const {
+        char* ret = new char[sizeof(triangle)];
+
+        conv_t<size_t> conv_id;
+        conv_id.side2 = id;
+        std::memcpy(ret, conv_id.side1, sizeof(size_t));
+
+        size_t offset = sizeof(size_t);
         std::memcpy(&ret[offset], A.to_char(), sizeof(point));
         offset+=sizeof(point);
         std::memcpy(&ret[offset], B.to_char(), sizeof(point));
         offset+=sizeof(point);
         std::memcpy(&ret[offset], C.to_char(), sizeof(point));
-
         return ret;
     }
     std::string to_string() {
@@ -144,10 +175,6 @@ public:
 
     size_t id = 0; // Порядковый номер в файле вершин
     point A, B, C;
-
-    // id не передается по сети, но влияет на sizeof(), из-за чего
-    // отправлялся буфер неверного размера
-    static constexpr size_t size = 3 * sizeof(point);
 };
 
 extern std::vector<triangle> triangles;

@@ -65,6 +65,7 @@ bool reader_argos::get_next_triangle(triangle* ret) {
     ret->A = { coord[0], coord[1], coord[2] };
     ret->B = { coord[3], coord[4], coord[5] };
     ret->C = { coord[6], coord[7], coord[8] };
+    ret->id = triangle_id++;
 
     triangles_current = file.tellg();
     return true;
@@ -90,6 +91,7 @@ bool reader_argos::get_triangle(triangle* ret, const size_t id) {
     ret->A = { coord[0], coord[1], coord[2] };
     ret->B = { coord[3], coord[4], coord[5] };
     ret->C = { coord[6], coord[7], coord[8] };
+    ret->id = i;
 
     file.seekg(triangles_current);
     return true;

@@ -44,6 +44,8 @@ private:
     std::ifstream file;
     std::streampos triangles_start, vectors_start;
     std::streampos triangles_current;
+
+    size_t triangle_id = 0;
 };
 
 // Интерфейс для сохранения результатов

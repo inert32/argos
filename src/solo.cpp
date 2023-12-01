@@ -105,12 +105,10 @@ void solo_start(socket_t* socket) {
         for (size_t i = 0; i < threads_count; i++) workers.emplace_back(worker_main, tasks);
 
         size_t chunks_count = 0;
-        size_t triangle_id = 0;
         while (p->have_triangles()) {
             // Загружаем треугольники
             triangle load; size_t count = 0;
             while (count < chunk_elements && p->get_next_triangle(&load)) {
-                load.id = triangle_id++;
                 triangles.push_back(load);
                 count++;
             }
