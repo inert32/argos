@@ -43,6 +43,7 @@ struct ipv4_t {
         for (int i = 0; i < 16; i++) ret.push_back(ip[i]);
         return ret + ":" + std::to_string(port);
     }
+
     ipv4_t() = default;
     ipv4_t(const sockaddr src);
 };

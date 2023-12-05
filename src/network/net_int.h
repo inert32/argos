@@ -5,15 +5,45 @@
     Внутренние функции работы с сетью
 */
 
+#ifdef __linux__
+#include <arpa/inet.h>
+#include <sys/poll.h>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include "unistd.h"
+
+typedef int socket_int_t;
+
+constexpr int INVALID_SOCKET = -1;
+constexpr int SOCKET_ERROR = -1;
+
+// Платформо-зависимые коды ошибок
+enum socket_err_codes {
+    plat_again = EAGAIN,
+    plat_wouldblock = EWOULDBLOCK
+};
+
+#elif _WIN32
+#include <WinSock2.h>
+
+typedef SOCKET socket_int_t;
+
+#define poll(fdArray, fds, timeout) WSAPoll(fdArray, fds, timeout)
+
+// Платформо-зависимые коды ошибок
+enum socket_err_codes {
+    plat_again = 0,
+    plat_wouldblock = WSAEWOULDBLOCK
+};
+
+#endif /*__linux__*/
+
 #include "net_def.h"
 #include "../th_queue.h"
 
-#ifdef __linux__
-typedef int socket_int_t;
-#elif _WIN32
-#include <WinSock2.h>
-typedef SOCKET socket_int_t;
-#endif /*__linux__*/
+std::string make_err_msg(const std::string& msg);
+int plat_get_error();
+#define throw_err(msg) throw std::runtime_error(make_err_msg(msg));
 
 struct header_t {
     size_t raw_len = sizeof(header_t);
