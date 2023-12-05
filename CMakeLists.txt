@@ -4,7 +4,7 @@ if(MSVC_VERSION LESS 1910)
 	message(FATAL_ERROR "This project require C++17")
 endif()
 
-project(argos_proj VERSION "0.2.0")
+project(argos_proj VERSION "0.2.1")
 configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
@@ -21,7 +21,7 @@ if(WIN32)
     target_link_libraries(argos Ws2_32.lib)
 endif()
 
-option (ARGOS_PVS "Run static analyze wit PVS-Studio" OFF)
+option (ARGOS_PVS "Run static analyze with PVS-Studio" OFF)
 if (ARGOS_PVS)
     include(FetchContent)
     FetchContent_Declare(PVS_CMakeModule

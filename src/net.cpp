@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <thread>
+#include <map>
 
 #include "settings.h"
 #include "net.h"
@@ -59,18 +60,25 @@ saver_network::saver_network(socket_t* s) : saver_base() {
     conn = s;
 }
 
-void saver_network::finalize() {
-    reset_file(final_file);
-
-    char line[net_chunk_size];
-    while (final_file.good()) {
-        final_file.read(line, net_chunk_size);
+void saver_network::finalize(const full_map& m) {
+    for (auto& i : m) {
+        if (i.second.size() == 0) continue;
 
         net_msg msg;
         msg.type = msg_types::CLIENT_DATA;
-        msg.len = final_file.gcount();
-        msg.data = line;
+        msg.len = sizeof(size_t) * (1 + i.second.size());
+        msg.data = new char[msg.len];
 
+        conv_t<size_t> conv;
+        conv.side2 = i.first;
+        std::memcpy(msg.data, conv.side1, sizeof(size_t));
+
+        size_t offset = sizeof(size_t);
+        for (auto& t : i.second) {
+            conv.side2 = t;
+            std::memcpy(&msg.data[offset], conv.side1, sizeof(size_t));
+            offset+=sizeof(size_t);
+        }
         conn->send_msg(msg);
     }
 }
@@ -79,7 +87,6 @@ void master_start(socket_t* socket) {
     std::cout << "Master mode" << std::endl;
     std::cout << "Listen port " << port_server << std::endl;
     auto parser = select_parser(nullptr);
-    std::fstream tmpfile(output_file.string() + ".tmp", ioflags | std::ios::trunc);
 
     // Загружаем вектора
     parser->get_vectors();
@@ -90,6 +97,8 @@ void master_start(socket_t* socket) {
         std::memcpy(&vectors_array[offset], v.to_char(), sizeof(vec3));
         offset+=sizeof(vec3);
     }
+    full_map map;
+    for (size_t i = 0; i < vectors.size(); i++) map[i].clear();
 
     // Открываем поток приема сообщений
     th_queue<net_msg> queue;
@@ -132,8 +141,14 @@ void master_start(socket_t* socket) {
                 break;
             }
             case msg_types::CLIENT_DATA: {
-                tmpfile.write(msg.data, msg.len);
-                tmpfile.flush();
+                conv_t<size_t> conv;
+                std::memcpy(conv.side1, msg.data, sizeof(size_t));
+                const size_t vec = conv.side2;
+
+                for (size_t i = sizeof(size_t); i < msg.len; i+=sizeof(size_t)) {
+                    std::memcpy(conv.side1, &msg.data[i], sizeof(size_t));
+                    map[vec].insert(conv.side2);
+                }
                 delete[] msg.data;
                 break;
             }
@@ -152,10 +167,8 @@ void master_start(socket_t* socket) {
     netd.join();
 
     // Сохраняем файл
-    tmpfile.close();
     auto saver = select_saver(nullptr);
-    saver->compress();
-    saver->finalize();
+    saver->finalize(map);
     delete saver;
     delete parser;
 }

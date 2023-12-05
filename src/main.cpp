@@ -47,7 +47,6 @@ int show_help() {
     std::cout << "     --port <PORT>         - set server port (default " << port_server << ")" << std::endl;
     std::cout << "     --min-clients <COUNT> - set minimal clients count to start (default " << clients_min << ")" << std::endl;
     std::cout << "     --max-clients <COUNT> - set maximum clients count (default " << clients_max << ")" << std::endl;
-    std::cout << "     --keep-tmp            - keep temporary files (default off)";
     std::cout << "     --help                - this help" << std::endl;
     return 0;
 }
@@ -68,7 +67,6 @@ bool parse_cli(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         std::string buf(argv[i]);
 
-        if (buf == "--keep-tmp") keep_tmp = true;
         if (buf == "--master") master_mode = true;
         if (buf == "--file") {
             if (i + 1 < argc) verticies_file = argv[++i];

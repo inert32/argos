@@ -92,11 +92,13 @@ void solo_start(socket_t* socket) {
         std::cout << "Loaded " << vectors.size() << " vectors" << std::endl;
 
         // Создаем матрицу ответов
+        full_map map;
         const size_t vec_count = vectors.size();
         volatile char** ans_matr = new volatile char*[vec_count];
         for (size_t i = 0; i < vec_count; i++) {
             ans_matr[i] = new volatile char[chunk_elements];
             for (size_t j = 0; j < chunk_elements; j++) ans_matr[i][j] = 2;
+            map[i].clear();
         }
 
         // Создаем потоки и очередь заданий
@@ -147,29 +149,21 @@ void solo_start(socket_t* socket) {
             }
 
             // Сохраняем
-            s->save(ans_matr, count);
-
-            // Помечаем матрицу как непроверенную перед загрузкой новых треугольников
-            // До 0f4eb59d77c8a4a2d1a3efc87a03d9307a0b2260 матрица пересоздавалась 
-            // каждую итерацию цикла, теперь метку о заполнении строки нужно ставить вручную.
-            for (size_t i = 0; i < vec_count; i++)
-                ans_matr[i][count - 1] = 2;
+            s->save(ans_matr, count, &map);
 
             // Очищаем данные для следующей партии треугольников
             triangles.clear();
             chunks_count+=count;
         }
         // Останавливаем потоки
+        std::cout << "stopping threads..." << std::endl;
         stop = true;
         for (size_t i = 0; i < threads_count; i++) workers[i].join();
 
         for (size_t i = 0; i < vec_count; i++) delete[] ans_matr[i];
         delete[] ans_matr;
-        // При количестве треугольников больше чем chunks_elements
-        // вектора в выходном файле будут повторяться. Исправляем.
-        s->compress();
-        // Переводим идентификаторы векторов и треугольников в координаты
-        s->finalize();
+
+        s->finalize(map);
 
         delete p;
         delete s;

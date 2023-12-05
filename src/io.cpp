@@ -130,127 +130,40 @@ bool reader_argos::have_triangles() const {
     return triangles_current < vectors_start;
 }
 
-saver_base::saver_base() {
-    tmp_path = output_file.string() + ".tmp";
-    final_path = output_file.string() + ".tmp-final";
-
-    auto flags_tmp = ioflags;
-    if (!std::filesystem::exists(tmp_path)) flags_tmp |= std::ios::trunc;
-    tmp_file.open(tmp_path, flags_tmp);
-    if (!tmp_file.good()) throw std::runtime_error("saver: Failed to open file " + tmp_path);
-
-    auto flags_final = ioflags;
-    if (!std::filesystem::exists(final_path)) flags_final |= std::ios::trunc;
-    final_file.open(final_path, flags_final);
-    if (!final_file.good()) throw std::runtime_error("saver: Failed to open file " + final_path);
-}
-
-saver_base::~saver_base() {
-    tmp_file.close();
-    final_file.close();
-
-    if (!keep_tmp) {
-        std::filesystem::remove(tmp_path);
-        std::filesystem::remove(final_path);
-    }
-}
-
-void saver_base::save(volatile char** mat, const unsigned int count) {
+void saver_base::save(volatile char** mat, const unsigned int count, full_map* map) {
     const size_t vec_count = vectors.size();
-    // Для каждого вектора указываем 
-    for (size_t vec = 0; vec < vec_count; vec++) {
-        auto& curr_vec = vectors[vec];
-        tmp_file << curr_vec.id << ":";
 
+    for (size_t vec = 0; vec < vec_count; vec++)
         for (size_t tr = 0; tr < count; tr++)
-            if (mat[vec][tr] == 1) {
-                auto& t = triangles[tr];
-                tmp_file << t.id << " ";
-            }
-        tmp_file << '\n';
-    }
-    tmp_file.flush();
+            if (mat[vec][tr] == 1) map->at(vec).insert(triangles[tr].id);
 }
 
-void saver_base::compress() {
-    std::cout << "Compressing output..." << std::endl;
-    reset_file(tmp_file);
-    reset_file(final_file);
-
-    std::map<size_t, std::set<size_t>> data; // Словарь векторов и треугольников
-    while (!tmp_file.eof()) {
-        std::string buf;
-        std::getline(tmp_file, buf);
-        if (buf.empty() || tmp_file.eof()) break;
-
-        // Получаем вектор
-        const auto split = buf.find(':');
-        const size_t vec_id = std::stoul(buf.substr(0, split));
-        const std::string list = buf.substr(split + 1);
-
-        // Добавляем данные в словарь
-        data[vec_id].merge(clear_repeats(list));
-    }
-
-    // Сохраняем финальный результат в файл
-    // Этот результат еще состоит из ids
-    for (auto &[vec, tr] : data) {
-        if (tr.empty()) continue; // Не записываем вектора, не попавшие по треугольникам
-
-        final_file << vec << ':';
-        for (auto &j : tr)
-            final_file << j << " ";
-        final_file << '\n';
-    }
-
-    const auto pre_size = std::filesystem::file_size(tmp_path);
-    const auto post_size = std::filesystem::file_size(final_path);
-    const double diff = (double)post_size / (double)pre_size * 100;
-
-    std::cout << "compress: compressed bytes: " << pre_size << "->" << post_size << " (" << diff << "%)" << std::endl;
-}
-
-void saver_base::reset_file(std::fstream& file) {
-    file.seekg(0);
-    file.seekp(0);
-    file.clear();
-}
-
-void saver_local::finalize() {
-    std::cout << "Converting ids, this will take time..." << std::endl;
-    // compress сохраняет результаты в виде id векторов и треугольников.
-    // finalize должен перевести их в сами вектора и треугольники
-    auto ref = select_parser(nullptr);
-    reset_file(final_file);
-    std::fstream out(output_file, std::ios::out);
+saver_local::saver_local() : saver_base() {
+    out.open(output_file, std::ios::out);
     if (!out.good()) throw std::runtime_error("finalize: Failed to open file " + output_file.string());
+}
+
+saver_local::~saver_local() {
+    out.close();
+}
+
+void saver_local::finalize(const full_map& m) {
+    std::cout << "Saving..." << std::endl;
+    auto ref = select_parser(nullptr);
 
     // Кэш треугольников
-    std::map<size_t, std::string> map;
+    std::map<size_t, std::string> cache;
+    triangle load;
+    while (ref->get_next_triangle(&load)) cache[load.id] = load.to_string();
 
-    while (!final_file.eof()) {
-        std::string buf;
-        std::getline(final_file, buf);
-        if (buf.empty() || final_file.eof()) break;
+    for (auto &i : m) {
+        const size_t vec = i.first;
 
-        // Получаем вектор
-        const auto split = buf.find(':');
-        const size_t vec_id = std::stoul(buf.substr(0, split));
-        const std::string list = buf.substr(split + 1);
-        std::string out_line = vectors[vec_id].to_string() + ":";
+        out << vectors[vec].to_string() << ":";
 
-        // Преобразуем строку в список id
-        auto ids = clear_repeats(list);
-
-        for (auto& i : ids) {
-            if (map.find(i) == map.end()) { // Треугольника нет в кэше
-                triangle tmp;
-                ref->get_triangle(&tmp, i);
-                map[i] += tmp.to_string() + ';';
-            }
-            out_line += map[i];
-        }
-        out_line.pop_back();
-        out << out_line << '\n';
+        for (auto &j : i.second)
+            out << cache[j] << " ";
+        out << "\n";
     }
+    delete ref;
 }

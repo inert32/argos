@@ -15,8 +15,6 @@ unsigned int chunk_elements = 100;
 
 unsigned int threads_count = 0;
 
-bool keep_tmp = false;
-
 unsigned int port_server = 3700;
 
 size_t clients_min = 0;
