@@ -4,12 +4,11 @@ if(MSVC_VERSION LESS 1910)
 	message(FATAL_ERROR "This project require C++17")
 endif()
 
-project(argos_proj VERSION "0.2.1")
+project(argos_proj VERSION "0.2.2")
 configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
 
 add_executable(argos
 src/main.cpp src/solo.cpp src/io.cpp src/net.cpp
-src/network/net_linux.cpp src/network/net_win.cpp
 src/network/net_int.cpp src/settings.cpp
 
 src/settings.h src/base.h src/th_queue.h src/io.h

@@ -156,7 +156,6 @@ void solo_start(socket_t* socket) {
             chunks_count+=count;
         }
         // Останавливаем потоки
-        std::cout << "stopping threads..." << std::endl;
         stop = true;
         for (size_t i = 0; i < threads_count; i++) workers[i].join();
 
