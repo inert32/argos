@@ -31,7 +31,7 @@ public:
     saver_network(socket_t* s);
     ~saver_network() = default;
 
-    void finalize();
+    void finalize(const full_map& m);
 private:
     socket_t* conn;
 };

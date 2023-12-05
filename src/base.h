@@ -6,7 +6,8 @@
 */
 
 #include <vector>
-
+#include <map>
+#include <set>
 #include <ostream>
 
 // Конвертер простых типов в массив байтов
@@ -15,6 +16,9 @@ union conv_t {
     char side1[sizeof(T)];
     T side2;
 };
+
+// Контейнер для векторов (size_t), попавшим по треугольникам (std::set)
+typedef std::map<size_t, std::set<size_t>> full_map;
 
 class point {
 public:

@@ -21,7 +21,7 @@ if(WIN32)
     target_link_libraries(argos Ws2_32.lib)
 endif()
 
-option (ARGOS_PVS "Run static analyze wit PVS-Studio" OFF)
+option (ARGOS_PVS "Run static analyze with PVS-Studio" OFF)
 if (ARGOS_PVS)
     include(FetchContent)
     FetchContent_Declare(PVS_CMakeModule
