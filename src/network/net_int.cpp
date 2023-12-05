@@ -40,6 +40,15 @@ void socket_t::set_nonblock() {
 void socket_t::kill() {
     closesocket(s);
 }
+bool socket_t::is_online() const {
+    char c;
+    auto l = recv(s, &c, sizeof(char), MSG_PEEK);
+    if (l == 0) return false;
+    return (l == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) ? false : true;
+}
+int _mk_flag() {
+    return (master_mode) ? 0 : MSG_WAITALL;
+}
 #elif __linux__
 bool init_network() {
     return true;
@@ -57,6 +66,14 @@ void socket_t::set_nonblock() {
 }
 void socket_t::kill() {
     close(s);
+}
+bool socket_t::is_online() const {
+    char c;
+    auto l = recv(s, &c, sizeof(char), MSG_PEEK);
+    return (l > 0 || (errno == EAGAIN || errno == EWOULDBLOCK)) ? true : false;
+}
+int _mk_flag() { // Linux требует MSG_WAITALL для получения всех данных из recv
+    return MSG_WAITALL;
 }
 #endif
 
@@ -172,7 +189,7 @@ int calc_checksum(const net_msg& msg) {
 void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
     netd_started = true;
 
-    while (*run == true) {
+    while (*run == true) { //-V1044
         bool incoming = false;
         auto cl = clients->poll_sockets(sock_in, &incoming);
 
@@ -221,7 +238,7 @@ socket_t::socket_t() {
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port = htons(port_server);
         if (bind(s, (sockaddr*)&addr, sizeof(addr)) < 0) throw_err("Bind error");
-        if (listen(s, 1) == -1) throw_err("Listen fail");
+        if (listen(s, 1) == SOCKET_ERROR) throw_err("Listen fail");
     }
     else {
         addr.sin_addr.s_addr = inet_addr(master_addr.ip);
@@ -239,20 +256,12 @@ socket_t::socket_t(const socket_int_t old) {
     s = old;
 }
 
-bool socket_t::is_online() const {
-    char c;
-    auto l = recv(s, &c, sizeof(char), MSG_PEEK);
-    if (l == 0) return false;
-
-    return (l == SOCKET_ERROR && plat_get_error() != plat_wouldblock) ? false : true;
-}
-
 socket_int_t socket_t::raw() {
     return s;
 }
 
 socket_t* socket_t::accept_conn(ipv4_t* who) {
-    sockaddr addr; int len = sizeof(sockaddr);
+    sockaddr addr; unsigned int len = sizeof(sockaddr);
 
     auto try_accept = accept(s, &addr, &len);
     if (try_accept > 0) {
@@ -265,17 +274,14 @@ socket_t* socket_t::accept_conn(ipv4_t* who) {
 bool socket_t::get_msg(net_msg* ret) {
     header_t head;
     auto l = recv(s, (char*)&head, sizeof(header_t), 0);
-    if (l == SOCKET_ERROR && plat_get_error() != plat_wouldblock) {
-        std::cerr << "get_msg: WSA return " << WSAGetLastError() << std::endl;
-    }
-
     if (l < (signed)sizeof(header_t)) return false;
 
     ret->type = head.type;
     ret->len = head.raw_len - sizeof(header_t);
 
+    const auto flag = _mk_flag();
+
     if (ret->len == 0) return true;
-    const auto flag = (master_mode) ? 0 : MSG_WAITALL;
     // Копируем сообщение в ret
     ret->data = new char[ret->len];
     size_t bytes_got = 0;
