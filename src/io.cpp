@@ -198,10 +198,10 @@ void saver_base::compress() {
         if (tr.empty()) continue; // Не записываем вектора, не попавшие по треугольникам
 
         final_file << vec << ':';
-        for (auto &j : tr)
-            final_file << j << " ";
+        for (auto &j : tr) final_file << j << " ";
         final_file << '\n';
     }
+    final_file.flush();
 
     const auto pre_size = std::filesystem::file_size(tmp_path);
     const auto post_size = std::filesystem::file_size(final_path);
@@ -227,6 +227,8 @@ void saver_local::finalize() {
 
     // Кэш треугольников
     std::map<size_t, std::string> map;
+    triangle load;
+    while (ref->get_next_triangle(&load)) map[load.id] = load.to_string();
 
     while (!final_file.eof()) {
         std::string buf;
@@ -242,15 +244,7 @@ void saver_local::finalize() {
         // Преобразуем строку в список id
         auto ids = clear_repeats(list);
 
-        for (auto& i : ids) {
-            if (map.find(i) == map.end()) { // Треугольника нет в кэше
-                triangle tmp;
-                ref->get_triangle(&tmp, i);
-                map[i] += tmp.to_string() + ';';
-            }
-            out_line += map[i];
-        }
-        out_line.pop_back();
+        for (auto& i : ids) out_line += map[i] + " ";
         out << out_line << '\n';
     }
 }
