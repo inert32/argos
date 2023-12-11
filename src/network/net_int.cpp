@@ -9,8 +9,6 @@
 #include "../settings.h"
 #include "net_int.h"
 
-bool netd_started = false;
-
 #ifdef _WIN32
 bool init_network() {
     if (!(master_mode || master_addr)) return true; // Не запускаем сеть для одиночного режима
@@ -186,46 +184,6 @@ int calc_checksum(const net_msg& msg) {
     return (int)sum;
 }
 
-void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run) {
-    netd_started = true;
-
-    while (*run == true) { //-V1044
-        bool incoming = false;
-        auto cl = clients->poll_sockets(sock_in, &incoming);
-
-        // Подключение нового клиента
-        if (incoming) {
-            ipv4_t client_data;
-            auto try_accept = sock_in->accept_conn(&client_data);
-            if (try_accept != nullptr) {
-                if (clients->try_add(try_accept)) {
-                    std::cout << "Accepted client " << client_data << std::endl;
-                    try_accept->send_msg(msg_types::SERVER_CLIENT_ACCEPT);
-                }
-                else try_accept->send_msg(msg_types::SERVER_CLIENT_NOT_ACCEPT);
-            }
-        }
-        
-        if (clients->max_count() < clients_min) continue;
-
-        // Добавляем запросы подключенных клиентов в очередь
-        for (auto &i : cl) {
-            auto c = clients->get(i);
-            if (c == nullptr) continue;
-            if (!(c->is_online())) {
-                clients->remove(i);
-                continue;
-            }
-
-            net_msg ret;
-            if (!c->get_msg(&ret)) continue;
-            ret.peer_id = i;
-            queue->add(ret);
-        }
-    }
-    netd_started = false;
-}
-
 socket_t::socket_t() {
     s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s == INVALID_SOCKET) throw_err("Socket error");
@@ -348,4 +306,62 @@ bool socket_t::send_msg(const msg_types msg) {
         std::cout << "send_msg: incomplete message send (" << bytes_send << " of " << sizeof(msg_types) << ")" << std::endl;
 
     return true;
+}
+
+netd::netd(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* queue) {
+    in = sock_in;
+    cl = clients;
+    q = queue;
+}
+
+void netd::start() {
+    allow_run = true;
+    t = new std::thread(&netd::netd_main, this);
+    while (!running) continue;
+}
+
+void netd::stop() {
+    allow_run = false;
+    while (running) continue;
+    t->join();
+    t = nullptr;
+}
+
+void netd::netd_main() {
+    running = true;
+    while (allow_run == true) { //-V1044
+        bool incoming = false;
+        auto polled = cl->poll_sockets(in, &incoming);
+
+        // Подключение нового клиента
+        if (incoming) {
+            ipv4_t client_data;
+            auto try_accept = in->accept_conn(&client_data);
+            if (try_accept != nullptr) {
+                if (cl->try_add(try_accept)) {
+                    std::cout << "Accepted client " << client_data << std::endl;
+                    try_accept->send_msg(msg_types::SERVER_CLIENT_ACCEPT);
+                }
+                else try_accept->send_msg(msg_types::SERVER_CLIENT_NOT_ACCEPT);
+            }
+        }
+        
+        if (cl->max_count() < clients_min) continue;
+
+        // Добавляем запросы подключенных клиентов в очередь
+        for (auto &i : polled) {
+            auto c = cl->get(i);
+            if (c == nullptr) continue;
+            if (!(c->is_online())) {
+                cl->remove(i);
+                continue;
+            }
+
+            net_msg ret;
+            if (!c->get_msg(&ret)) continue;
+            ret.peer_id = i;
+            q->add(ret);
+        }
+    }
+    running = false;
 }

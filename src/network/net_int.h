@@ -39,6 +39,7 @@ enum socket_err_codes {
 
 #endif /*__linux__*/
 
+#include <atomic>
 #include "net_def.h"
 #include "../th_queue.h"
 
@@ -95,17 +96,32 @@ private:
     socket_int_t s;
 };
 
-int calc_checksum(const net_msg& msg);
+class netd {
+public:
+    netd(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* queue);
 
-// Флаг работы сетевого потока (только для сервера)
-extern bool netd_started;
+    void start();
+    bool is_running() const { return running; }
+    void stop();
+private:
+    void netd_main();
+    // Разрешение на запуск потока
+    std::atomic<bool> allow_run = false;
+    // Флаг работы сетевого потока
+    std::atomic<bool> running = false;
+
+    socket_t* in = nullptr;
+    clients_list* cl = nullptr;
+    th_queue<net_msg>* q = nullptr;
+
+    std::thread* t = nullptr;
+};
+
+int calc_checksum(const net_msg& msg);
 
 constexpr size_t net_chunk_size = 1024;
 
 bool init_network();
 void shutdown_network();
-
-// Сетевой поток
-void netd_server(socket_t* sock_in, clients_list* clients, th_queue<net_msg>* queue, volatile bool* run);
 
 #endif /* __NET_INT_H__ */

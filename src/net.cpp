@@ -102,10 +102,9 @@ void master_start(socket_t* socket) {
 
     // Открываем поток приема сообщений
     th_queue<net_msg> queue;
-    volatile bool threads_run = true;
     clients_list cl;
-    std::thread netd(netd_server, socket, &cl, &queue, &threads_run);
-    while (!netd_started) continue;
+    netd net(socket, &cl, &queue);
+    net.start();
 
     std::cout << "Ready." << std::endl;
     while (cl.run_server()) { // Обработка сообщений
@@ -162,9 +161,7 @@ void master_start(socket_t* socket) {
             }
         }
     }
-    threads_run = false;
-    while (netd_started) continue;
-    netd.join();
+    net.stop();
 
     // Сохраняем файл
     auto saver = select_saver(nullptr);
