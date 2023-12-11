@@ -61,6 +61,7 @@ saver_network::saver_network(socket_t* s) : saver_base() {
 }
 
 void saver_network::finalize(const full_map& m) {
+    std::cout << "Sending results..." << std::endl;
     for (auto& i : m) {
         if (i.second.size() == 0) continue;
 
@@ -168,4 +169,5 @@ void master_start(socket_t* socket) {
     saver->finalize(map);
     delete saver;
     delete parser;
+    std::cout << "Complete." << std::endl;
 }

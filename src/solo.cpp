@@ -166,6 +166,7 @@ void solo_start(socket_t* socket) {
 
         delete p;
         delete s;
+        std::cout << "Complete." << std::endl;
     }
     catch (const std::runtime_error& e) {
         std::cerr << "err: " << e.what() << std::endl;
