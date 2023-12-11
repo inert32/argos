@@ -27,6 +27,7 @@ enum socket_err_codes {
 #include <WinSock2.h>
 
 typedef SOCKET socket_int_t;
+typedef int socklen_t;
 
 #define poll(fdArray, fds, timeout) WSAPoll(fdArray, fds, timeout)
 

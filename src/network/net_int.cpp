@@ -261,7 +261,7 @@ socket_int_t socket_t::raw() {
 }
 
 socket_t* socket_t::accept_conn(ipv4_t* who) {
-    sockaddr addr; unsigned int len = sizeof(sockaddr);
+    sockaddr addr; socklen_t len = sizeof(sockaddr);
 
     auto try_accept = accept(s, &addr, &len);
     if (try_accept > 0) {
