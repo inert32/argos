@@ -23,7 +23,7 @@ else()
     set(ARGOS_GIT_DATA "git: unknown")
 endif()
 
-configure_file(src/settings.h.in ${argos_proj_SOURCE_DIR}/src/settings.h)
+configure_file(src/settings.cpp.in ${argos_proj_SOURCE_DIR}/src/settings.cpp)
 
 add_executable(argos
 src/main.cpp src/solo.cpp src/io.cpp src/net.cpp

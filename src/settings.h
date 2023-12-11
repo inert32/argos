@@ -10,9 +10,9 @@
 #include <filesystem>
 #include "network/net_def.h"
 
-inline constexpr std::string_view ARGOS_VERSION = "v@PROJECT_VERSION@";
-inline constexpr std::string_view ARGOS_GIT_BRANCH = "@ARGOS_GIT_BRANCH@";
-inline constexpr std::string_view ARGOS_GIT_DATA = "@ARGOS_GIT_DATA@";
+extern std::string_view ARGOS_VERSION;
+extern std::string_view ARGOS_GIT_BRANCH;
+extern std::string_view ARGOS_GIT_DATA;
 
 // Путь до исходного файла заданий
 extern std::filesystem::path verticies_file;
