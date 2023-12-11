@@ -20,3 +20,5 @@ unsigned int port_server = 3700;
 size_t clients_min = 0;
 
 size_t clients_max = 10;
+
+bool print_devel_info = (ARGOS_GIT_BRANCH == "main") ? false : true;

@@ -47,6 +47,7 @@ int show_help() {
     std::cout << "     --port <PORT>         - set server port (default " << port_server << ")" << std::endl;
     std::cout << "     --min-clients <COUNT> - set minimal clients count to start (default " << clients_min << ")" << std::endl;
     std::cout << "     --max-clients <COUNT> - set maximum clients count (default " << clients_max << ")" << std::endl;
+    std::cout << "     --devel               - print Git branch, hash and build timestamp" << std::endl;
     std::cout << "     --help                - this help" << std::endl;
     return 0;
 }
@@ -68,6 +69,7 @@ bool parse_cli(int argc, char** argv) {
         std::string buf(argv[i]);
 
         if (buf == "--master") master_mode = true;
+        if (buf == "--devel") print_devel_info = true;
         if (buf == "--file") {
             if (i + 1 < argc) verticies_file = argv[++i];
             else {
@@ -106,9 +108,17 @@ bool parse_cli(int argc, char** argv) {
     return true;
 }
 
-int main(int argc, char** argv) {
+void print_ver() {
     std::cout << "argos " << ARGOS_VERSION << std::endl;
-    if (!parse_cli(argc, argv)) return show_help();
+    if (!print_devel_info) return;
+    std::cout << "Build timestamp: " << __TIMESTAMP__ " with " << ARGOS_GIT_DATA << std::endl;
+}
+
+int main(int argc, char** argv) {
+    auto cli = parse_cli(argc, argv);
+    print_ver();
+    threads_count_setup();
+    if (!cli) return show_help();
 
     // Очищаем пути к файлам
     if (!verticies_file.empty()) verticies_file = std::filesystem::absolute(verticies_file);
