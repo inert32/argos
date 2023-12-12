@@ -4,7 +4,7 @@ if(MSVC_VERSION LESS 1910)
 	message(FATAL_ERROR "This project require C++17")
 endif()
 
-project(argos_proj VERSION "0.2.2")
+project(argos_proj VERSION "0.2.3")
 # Запись данных из Git
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     execute_process(
