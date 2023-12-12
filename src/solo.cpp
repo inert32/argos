@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <thread>
+#include <atomic>
 
 #include "settings.h"
 #include "th_queue.h"
@@ -16,7 +17,7 @@ std::vector<triangle> triangles;
 std::vector<vec3> vectors;
 
 // Флаг остановки потоков
-volatile bool stop = false;
+std::atomic<bool> stop = false;
 
 struct thread_task {
     vec3 vec; // Вектор для обработки
