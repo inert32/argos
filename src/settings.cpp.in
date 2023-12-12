@@ -3,6 +3,12 @@
 
 #include "settings.h"
 
+std::string_view ARGOS_VERSION = "v@PROJECT_VERSION@";
+
+std::string_view ARGOS_GIT_BRANCH = "@ARGOS_GIT_BRANCH@";
+
+std::string_view ARGOS_GIT_DATA = "@ARGOS_GIT_DATA@";
+
 std::filesystem::path verticies_file;
 
 std::filesystem::path output_file = "output.list";
@@ -20,3 +26,5 @@ unsigned int port_server = 3700;
 size_t clients_min = 0;
 
 size_t clients_max = 10;
+
+bool print_devel_info = (ARGOS_GIT_BRANCH == "main") ? false : true;

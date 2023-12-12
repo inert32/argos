@@ -6,10 +6,13 @@
     а так же общие типы данных
 */
 
+#include <string_view>
 #include <filesystem>
 #include "network/net_def.h"
 
-constexpr char ARGOS_VERSION[] = "v@PROJECT_VERSION@";
+extern std::string_view ARGOS_VERSION;
+extern std::string_view ARGOS_GIT_BRANCH;
+extern std::string_view ARGOS_GIT_DATA;
 
 // Путь до исходного файла заданий
 extern std::filesystem::path verticies_file;
@@ -37,5 +40,7 @@ extern size_t clients_max;
 
 // Минимум клиентов для начала работы
 extern size_t clients_min;
+
+extern bool print_devel_info;
 
 #endif /* __COMMON_H__ */

@@ -61,6 +61,7 @@ saver_network::saver_network(socket_t* s) : saver_base() {
 }
 
 void saver_network::finalize(const full_map& m) {
+    std::cout << "Sending results..." << std::endl;
     for (auto& i : m) {
         if (i.second.size() == 0) continue;
 
@@ -102,10 +103,9 @@ void master_start(socket_t* socket) {
 
     // Открываем поток приема сообщений
     th_queue<net_msg> queue;
-    volatile bool threads_run = true;
     clients_list cl;
-    std::thread netd(netd_server, socket, &cl, &queue, &threads_run);
-    while (!netd_started) continue;
+    netd net(socket, &cl, &queue);
+    net.start();
 
     std::cout << "Ready." << std::endl;
     while (cl.run_server()) { // Обработка сообщений
@@ -162,13 +162,12 @@ void master_start(socket_t* socket) {
             }
         }
     }
-    threads_run = false;
-    while (netd_started) continue;
-    netd.join();
+    net.stop();
 
     // Сохраняем файл
     auto saver = select_saver(nullptr);
     saver->finalize(map);
     delete saver;
     delete parser;
+    std::cout << "Complete." << std::endl;
 }

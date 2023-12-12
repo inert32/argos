@@ -148,7 +148,7 @@ saver_local::~saver_local() {
 }
 
 void saver_local::finalize(const full_map& m) {
-    std::cout << "Saving..." << std::endl;
+    std::cout << "Saving to " << output_file << "..." << std::endl;
     auto ref = select_parser(nullptr);
 
     // Кэш треугольников
